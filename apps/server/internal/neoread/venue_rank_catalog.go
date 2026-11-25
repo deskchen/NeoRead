@@ -60,7 +60,7 @@ func localVenueRankBadges(venue, kind string) []journalRankBadge {
 	badges := []journalRankBadge{}
 	for _, badge := range []journalRankBadge{
 		{Key: "core", Name: "CORE", Value: "A*", Year: "2026"},
-		{Key: "thcpl", Name: "TH-CPL", Value: "A", Year: "2019"},
+		{Key: "thcpl", Name: "THCPL", Value: "A", Year: "2019"},
 	} {
 		index := localVenueRanks[badge.Key]
 		matched := index[journalName(venue)]
@@ -76,9 +76,11 @@ func localVenueRankBadges(venue, kind string) []journalRankBadge {
 				}
 			}
 		}
-		if matched != "" && (kind == "" || kind == "preprint" || strings.EqualFold(matched, kind)) {
-			badges = append(badges, badge)
+		if matched == "" || (kind != "" && kind != "preprint" && !strings.EqualFold(matched, kind)) {
+			badge.Name = "Non-" + badge.Name
+			badge.Value = ""
 		}
+		badges = append(badges, badge)
 	}
 	return badges
 }

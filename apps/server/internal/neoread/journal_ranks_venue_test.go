@@ -92,7 +92,7 @@ func TestJournalRankVenueNamesAreBoundedAndOrdered(t *testing.T) {
 					t.Fatal(result)
 				}
 				if tc.firstMiss && len(tc.want) == 1 {
-					if ccf.Name != "Non CCF" {
+					if ccf.Name != "Non-CCF" {
 						t.Fatal(result)
 					}
 				} else if ccf.Name != "CCF" || ccf.Value != "A" {

@@ -21,7 +21,7 @@ import (
 
 var journalRankURL = "https://www.easyscholar.cc/open/getPublicationRank"
 
-var defaultJournalRankFields = []string{"ccf", "thcpl", "core"}
+var defaultJournalRankFields = []string{"ccf", "core", "thcpl"}
 var arxivRankVenue = regexp.MustCompile(`(?i)^arxiv(?:\.org|\s+preprint)?(?:\s*(?:arxiv)?\s*[: ]\s*[a-z.\d/-]+)?$`)
 var journalRankFieldOrder = []string{"sciif", "sciif5", "jci", "sci", "ssci", "sciUp", "sciUpSmall", "sciBase", "sciBaseSmall", "sciUpTop"}
 
@@ -29,7 +29,7 @@ var journalRankNames = map[string]string{
 	"sciif": "IF", "sciif5": "五年 IF", "jci": "JCI", "sci": "SCI/JCR",
 	"ssci": "SSCI/JCR", "sciUp": "中科院", "sciUpSmall": "中科院小类",
 	"sciBase": "中科院基础版", "sciBaseSmall": "中科院基础版小类",
-	"core": "CORE", "thcpl": "TH-CPL",
+	"core": "CORE", "thcpl": "THCPL",
 	"ccf": "CCF", "cscd": "CSCD", "pku": "北大核心", "cssci": "CSSCI",
 	"ahci": "A&HCI", "ajg": "AJG", "fms": "FMS", "ft50": "FT50",
 	"utd24": "UTD24", "scopus": "Scopus", "eii": "EI", "sciwarn": "中科院预警",
@@ -439,7 +439,7 @@ func ccfBadge(badge journalRankBadge) bool { return badge.Key == "ccf" }
 
 func withCCFStatus(result journalRankResult) journalRankResult {
 	if !slices.ContainsFunc(result.Badges, ccfBadge) {
-		result.Badges = append([]journalRankBadge{{Key: "ccf", Name: "Non CCF"}}, result.Badges...)
+		result.Badges = append([]journalRankBadge{{Key: "ccf", Name: "Non-CCF"}}, result.Badges...)
 		result.Status = "found"
 	}
 	return result
@@ -477,16 +477,11 @@ func (s *Server) documentJournalRank(w http.ResponseWriter, r *http.Request) {
 	selected := func(field string) bool {
 		return slices.Contains(config.Selected, field) != (config.FilterMode == "exclude")
 	}
-	if arxivRankVenue.MatchString(publicationName) || (publicationName == "" && doc.Metadata.ArXiv != "") {
-		queryStatus = "notApplicable"
-		result := journalRankResult{Status: queryStatus, Badges: []journalRankBadge{}}
-		if selected("ccf") {
-			result = withCCFStatus(result)
-		}
-		respond(w, 200, result)
-		return
+	arxivOnly := arxivRankVenue.MatchString(publicationName) || (publicationName == "" && doc.Metadata.ArXiv != "")
+	if arxivOnly {
+		publicationName = "arXiv"
 	}
-	if doc.Metadata.ItemType != "" && doc.Metadata.ItemType != "journal" && doc.Metadata.ItemType != "conference" && !(doc.Metadata.ItemType == "preprint" && publicationName != "") {
+	if !arxivOnly && doc.Metadata.ItemType != "" && doc.Metadata.ItemType != "journal" && doc.Metadata.ItemType != "conference" && !(doc.Metadata.ItemType == "preprint" && publicationName != "") {
 		queryStatus = "notApplicable"
 		respond(w, 200, journalRankResult{Status: "notApplicable", Badges: []journalRankBadge{}})
 		return
@@ -502,10 +497,25 @@ func (s *Server) documentJournalRank(w http.ResponseWriter, r *http.Request) {
 	})
 	withLocal := func(result journalRankResult) journalRankResult {
 		if len(localBadges) > 0 {
-			result.Badges = append(localBadges, result.Badges...)
+			badges := slices.Clone(localBadges)
+			for _, badge := range result.Badges {
+				if badge.Key != "core" && badge.Key != "thcpl" {
+					badges = append(badges, badge)
+				}
+			}
+			result.Badges = badges
 			result.Status = "found"
 		}
 		return result
+	}
+	if arxivOnly {
+		result := withLocal(journalRankResult{Status: "notApplicable", Badges: []journalRankBadge{}})
+		if selected("ccf") {
+			result = withCCFStatus(result)
+		}
+		queryStatus = result.Status
+		respond(w, 200, result)
+		return
 	}
 	if key == "" {
 		result := withLocal(journalRankResult{Status: "disabled", Badges: []journalRankBadge{}})

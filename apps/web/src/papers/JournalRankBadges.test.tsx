@@ -281,10 +281,10 @@ it("reloads cached ratings when only the venue abbreviation changes and ignores 
   await act(async () => root.unmount());
 });
 
-it("shows the Non CCF label for an arXiv preprint without an API key", async () => {
+it("shows the Non-CCF label for an arXiv preprint without an API key", async () => {
   vi.mocked(api.documentJournalRank).mockResolvedValue({
     status: "found",
-    badges: [{ key: "ccf", name: "Non CCF", value: "" }],
+    badges: [{ key: "ccf", name: "Non-CCF", value: "" }],
   });
   const host = document.createElement("div");
   const root = createRoot(host);
@@ -304,6 +304,60 @@ it("shows the Non CCF label for an arXiv preprint without an API key", async () 
       />,
     ),
   );
-  expect(host.querySelector(".journal-rank-badge")?.textContent).toBe("Non CCF");
+  expect(host.querySelector(".journal-rank-badge")?.textContent).toBe(
+    "Non-CCF",
+  );
   await act(async () => root.unmount());
 });
+
+it.each([
+  {
+    badges: [
+      { key: "thcpl", name: "THCPL", value: "A", year: "2019" },
+      { key: "core", name: "CORE", value: "A*", year: "2026" },
+      { key: "ccf", name: "CCF", value: "A", subject: "Systems" },
+    ],
+    labels: ["CCF A", "CORE A*", "THCPL A"],
+  },
+  {
+    badges: [
+      { key: "thcpl", name: "Non-THCPL", value: "", year: "2019" },
+      { key: "core", name: "Non-CORE", value: "", year: "2026" },
+      { key: "ccf", name: "Non-CCF", value: "" },
+    ],
+    labels: ["Non-CCF", "Non-CORE", "Non-THCPL"],
+  },
+])(
+  "orders and compacts the venue badges as $labels",
+  async ({ badges, labels }) => {
+    vi.mocked(api.documentJournalRank).mockResolvedValue({
+      status: "found",
+      badges,
+    });
+    const host = document.createElement("div");
+    const root = createRoot(host);
+    await act(async () =>
+      root.render(
+        <JournalRankBadges
+          id="paper"
+          venue="Example Venue"
+          config={{
+            enabled: true,
+            hasKey: true,
+            filterMode: "include",
+            selected: ["thcpl", "core", "ccf"],
+            available: [],
+          }}
+          refreshRevision={0}
+        />,
+      ),
+    );
+    const elements = [
+      ...host.querySelectorAll<HTMLElement>(".journal-rank-badge"),
+    ];
+    expect(elements.map((element) => element.textContent)).toEqual(labels);
+    expect(elements[1].title).toContain("2026");
+    expect(elements[2].title).toContain("2019");
+    await act(async () => root.unmount());
+  },
+);

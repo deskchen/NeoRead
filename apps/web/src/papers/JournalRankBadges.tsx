@@ -8,6 +8,12 @@ import type {
 } from "@neoread/core";
 import { Button } from "@neoread/ui/components/button";
 
+const venueRankOrder = ["ccf", "core", "thcpl"];
+function rankPosition(key: string) {
+  const position = venueRankOrder.indexOf(key);
+  return position === -1 ? venueRankOrder.length : position;
+}
+
 function tone(badge: JournalRankBadge) {
   const value = badge.value.trim().toUpperCase();
   if (/\bQ1\b|(?:^|\D)1区|^A[+*]?$|^T1$/.test(value)) return "high";
@@ -40,9 +46,8 @@ export function JournalRankBadges({
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
   const [visibleCount, setVisibleCount] = useState(Infinity);
-  const localFields = /^arxiv(?:[.:\s]|$)/i.test(venue.trim())
-    ? ["ccf"]
-    : ["core", "thcpl"];
+  const localFields = ["core", "thcpl"];
+  if (/^arxiv(?:[.:\s]|$)/i.test(venue.trim())) localFields.push("ccf");
   const enabled =
     !!config?.enabled &&
     (config.hasKey ||
@@ -86,21 +91,15 @@ export function JournalRankBadges({
       cancelled = true;
       observer?.disconnect();
     };
-  }, [
-    id,
-    venue,
-    venueShort,
-    enabled,
-    config?.hasKey,
-    refreshRevision,
-    retry,
-  ]);
+  }, [id, venue, venueShort, enabled, config?.hasKey, refreshRevision, retry]);
   const badges =
-    result?.badges.filter((badge) =>
-      config?.filterMode === "exclude"
-        ? !config.selected.includes(badge.key)
-        : !!config?.selected.includes(badge.key),
-    ) || [];
+    result?.badges
+      .filter((badge) =>
+        config?.filterMode === "exclude"
+          ? !config.selected.includes(badge.key)
+          : !!config?.selected.includes(badge.key),
+      )
+      .sort((a, b) => rankPosition(a.key) - rankPosition(b.key)) || [];
   useLayoutEffect(() => {
     const container = ref.current;
     if (!container) return;
@@ -142,9 +141,13 @@ export function JournalRankBadges({
             .join(" · ")}
         >
           {badge.name}
-          {badge.subject ? ` ${badge.subject}` : ""}
+          {!venueRankOrder.includes(badge.key) && badge.subject
+            ? ` ${badge.subject}`
+            : ""}
           {badge.value ? ` ${badge.value}` : ""}
-          {badge.year ? ` · ${badge.year}` : ""}
+          {!venueRankOrder.includes(badge.key) && badge.year
+            ? ` · ${badge.year}`
+            : ""}
         </span>
       ))}
       {error && (
