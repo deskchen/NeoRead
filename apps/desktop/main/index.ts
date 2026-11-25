@@ -248,8 +248,12 @@ async function startServer() {
     let started = false;
     const timer = setTimeout(() => {
       child?.kill();
-      reject(new Error("本地服务启动超时"));
-    }, 20000);
+      diagnostics?.logs.record("desktop", {
+        level: "error",
+        event: "server.start_timeout",
+      });
+      reject(new Error("The local library service took too long to start"));
+    }, 45000);
     child!.once("error", (err) => {
       diagnostics?.logs.record("desktop", {
         level: "error",
@@ -1607,6 +1611,10 @@ app
   .catch(async (error) => {
     if (quitting) return;
     diagnostics?.record("desktop.start_failed", error);
+    if (process.platform === "darwin") {
+      startupWindow?.dispose();
+      startupWindow = undefined;
+    }
     if (diagnostics)
       await diagnostics.failure(
         error instanceof ReaderMigrationError

@@ -126,16 +126,22 @@ func main() {
 	}
 	recorder.Environment = map[string]any{"mode": "server", "appVersion": neoreadVersion, "buildCommit": buildCommit, "os": runtime.GOOS, "architecture": runtime.GOARCH, "goVersion": runtime.Version()}
 	slog.Info("server.start", "appVersion", neoreadVersion, "buildCommit", buildCommit, "goVersion", runtime.Version())
+	started := time.Now()
 	unlock, err := neoread.LockLibrary(root)
 	if err != nil {
+		slog.Error("server.startup.failed", "phase", "library_lock", "durationMs", time.Since(started).Milliseconds())
 		log.Fatal(err)
 	}
 	defer unlock()
+	slog.Info("server.startup.library_locked", "durationMs", time.Since(started).Milliseconds())
+	started = time.Now()
 	store, err := neoread.OpenLibrary(root)
 	if err != nil {
+		slog.Error("server.startup.failed", "phase", "library_open", "durationMs", time.Since(started).Milliseconds())
 		log.Fatal(err)
 	}
 	defer store.DB.Close()
+	slog.Info("server.startup.library_opened", "durationMs", time.Since(started).Milliseconds())
 	token := os.Getenv("NEOREAD_TOKEN")
 	if token == "" {
 		b := make([]byte, 32)
