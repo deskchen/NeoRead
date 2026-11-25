@@ -104,7 +104,7 @@ import {
   setStarred,
 } from "./actions";
 import {
-  arxivMonth,
+  arxivMonthLabel,
   authorsShort,
   paperYear,
   publicationDate,
@@ -1681,7 +1681,7 @@ function PaperRow({
       case "doi":
         return doc.metadata.doi || "—";
       case "arxiv":
-        return doc.metadata.arxiv ? arxivMonth(doc.metadata) || "—" : "—";
+        return doc.metadata.arxiv ? arxivMonthLabel(doc.metadata) || "—" : "—";
       case "tags":
         return doc.tags.length ? (
           <div className="paper-table-tags" title={doc.tags.join("、")}>

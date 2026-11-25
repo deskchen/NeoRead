@@ -1,6 +1,8 @@
 import { expect, it } from "vitest";
 import conferences from "../../../server/internal/neoread/conferences.json";
 import { conferenceVenue } from "./conferences";
+import { paperByline, venueLabel } from "./format";
+import { paper } from "./fixtures";
 
 it("includes the proceedings year in a conference label when requested", () => {
   expect(
@@ -19,8 +21,6 @@ it("includes the proceedings year in a conference label when requested", () => {
     "ASPLOS'25",
   );
 });
-import { paperByline, venueLabel } from "./format";
-import { paper } from "./fixtures";
 
 it.each([
   ["Neural Information Processing Systems", "NeurIPS"],
@@ -51,16 +51,61 @@ it.each([
   expect(venueLabel({ venue })).toBe(venue);
 });
 
+it.each([
+  [
+    "Proceedings of the ACM SIGOPS 31st Symposium on Operating Systems Principles",
+    "SOSP'25",
+  ],
+  ["Symposium on Networked Systems Design and Implementation", "NSDI'25"],
+  [
+    "Proceedings of the Workshop on Hot Topics in Operating Systems",
+    "HotOS'25",
+  ],
+  ["Conference on Machine Learning and Systems", "MLSys'25"],
+  [
+    "Proceedings of the 31st ACM SIGPLAN Annual Symposium on Principles and Practice of Parallel Programming",
+    "PPoPP'25",
+  ],
+  [
+    "Proceedings of the 3rd ACM SIGPLAN International Workshop on Machine Learning and Programming Languages",
+    "MAPL'25",
+  ],
+  ["Published in IFIP Networking 2025 Proceedings", "Networking'25"],
+  ["Proceedings of the ACM SIGCOMM 2025 Conference", "SIGCOMM'25"],
+  [
+    "Proceedings of the 2018 Conference of the ACM Special Interest Group on Data Communication",
+    "SIGCOMM'18",
+  ],
+  [
+    "Proceedings of the SC '23 Workshops of the International Conference on High Performance Computing, Networking, Storage, and Analysis",
+    "SC-W'23",
+  ],
+  ["Proceedings of the ACM on Programming Languages", "PACMPL"],
+  [
+    "Proceedings of the ACM on Measurement and Analysis of Computing Systems",
+    "POMACS",
+  ],
+])("shows the established venue abbreviation for %s", (venue, label) => {
+  expect(conferenceVenue({ venue, date: "2025" }, true)).toMatchObject({
+    label,
+    fullName: expect.any(String),
+  });
+});
+
 it("retains arXiv fallback when no venue exists", () => {
-  expect(venueLabel({ arxiv: "1706.03762" })).toBe("arXiv 2017-06");
-  expect(venueLabel({ venue: "arXiv:2503.01234" })).toBe("arXiv 2025-03");
-  expect(venueLabel({ arxiv: "hep-th/9901001v2" })).toBe("arXiv 1999-01");
+  expect(venueLabel({ arxiv: "1706.03762" })).toBe("arxiv-17-06");
+  expect(venueLabel({ venue: "arXiv:2503.01234" })).toBe("arxiv-25-03");
+  expect(venueLabel({ arxiv: "hep-th/9901001v2" })).toBe("arxiv-99-01");
   expect(
     venueLabel({
       venue: "arXiv preprint arXiv:2503.01234",
       arxiv: "2503.01234",
     }),
-  ).toBe("arXiv 2025-03");
+  ).toBe("arxiv-25-03");
+  expect(venueLabel({ venue: "arXiv.org", date: "2025-02-17" })).toBe(
+    "arxiv-25-02",
+  );
+  expect(venueLabel({ venue: "arXiv.org", date: "2025" })).toBe("arxiv");
   expect(venueLabel({})).toBe("");
 });
 

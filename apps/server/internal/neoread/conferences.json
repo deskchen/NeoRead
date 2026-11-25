@@ -75,7 +75,10 @@
   },
   {
     "abbreviation": "PPoPP",
-    "fullName": "ACM SIGPLAN Symposium on Principles & Practice of Parallel Programming"
+    "fullName": "ACM SIGPLAN Symposium on Principles & Practice of Parallel Programming",
+    "aliases": [
+      "ACM SIGPLAN Annual Symposium on Principles and Practice of Parallel Programming"
+    ]
   },
   {
     "abbreviation": "FAST",
@@ -96,6 +99,14 @@
   {
     "abbreviation": "SC",
     "fullName": "International Conference for High Performance Computing, Networking, Storage, and Analysis"
+  },
+  {
+    "abbreviation": "SC-W",
+    "fullName": "Workshops of the International Conference on High Performance Computing, Network, Storage, and Analysis",
+    "aliases": [
+      "SC Workshops of the International Conference on High Performance Computing, Network, Storage, and Analysis",
+      "SC Workshops of the International Conference on High Performance Computing, Networking, Storage, and Analysis"
+    ]
   },
   {
     "abbreviation": "ASPLOS",
@@ -326,7 +337,11 @@
   },
   {
     "abbreviation": "SIGCOMM",
-    "fullName": "ACM International Conference on Applications, Technologies, Architectures, and Protocols for Computer Communication"
+    "fullName": "ACM International Conference on Applications, Technologies, Architectures, and Protocols for Computer Communication",
+    "aliases": [
+      "ACM SIGCOMM Conference",
+      "Conference of the ACM Special Interest Group on Data Communication"
+    ]
   },
   {
     "abbreviation": "MobiCom",
@@ -338,7 +353,10 @@
   },
   {
     "abbreviation": "NSDI",
-    "fullName": "USENIX Symposium on Networked Systems Design and Implementation"
+    "fullName": "USENIX Symposium on Networked Systems Design and Implementation",
+    "aliases": [
+      "Symposium on Networked Systems Design and Implementation"
+    ]
   },
   {
     "abbreviation": "SenSys",
@@ -434,7 +452,10 @@
   },
   {
     "abbreviation": "Networking",
-    "fullName": "IFIP International Conferences on Networking"
+    "fullName": "IFIP International Conferences on Networking",
+    "aliases": [
+      "Published in IFIP Networking Proceedings"
+    ]
   },
   {
     "abbreviation": "IM",
@@ -656,7 +677,10 @@
   },
   {
     "abbreviation": "SOSP",
-    "fullName": "ACM Symposium on Operating Systems Principles"
+    "fullName": "ACM Symposium on Operating Systems Principles",
+    "aliases": [
+      "ACM SIGOPS Symposium on Operating Systems Principles"
+    ]
   },
   {
     "abbreviation": "OOPSLA",
@@ -756,7 +780,18 @@
   },
   {
     "abbreviation": "HotOS",
-    "fullName": "USENIX Workshop on Hot Topics in Operating Systems"
+    "fullName": "USENIX Workshop on Hot Topics in Operating Systems",
+    "aliases": [
+      "Workshop on Hot Topics in Operating Systems"
+    ]
+  },
+  {
+    "abbreviation": "MLSys",
+    "fullName": "Conference on Machine Learning and Systems"
+  },
+  {
+    "abbreviation": "MAPL",
+    "fullName": "ACM SIGPLAN International Workshop on Machine Learning and Programming Languages"
   },
   {
     "abbreviation": "PEPM",

@@ -57,6 +57,16 @@ for (const conference of conferences) {
   }
 }
 
+const journalAbbreviations = new Map([
+  [normalize("Proceedings of the ACM on Programming Languages"), "PACMPL"],
+  [
+    normalize(
+      "Proceedings of the ACM on Measurement and Analysis of Computing Systems",
+    ),
+    "POMACS",
+  ],
+]);
+
 /** Display only: never replace the stored venue or use this for search/sort. */
 export function conferenceVenue(
   {
@@ -73,6 +83,7 @@ export function conferenceVenue(
 ) {
   const normalized = normalize(venue);
   const conference = directory.get(normalized);
+  const journal = journalAbbreviations.get(normalized);
   const year =
     /\b(?:19|20)\d{2}\b/.exec(venue)?.[0] ??
     /['’](\d{2})\b/.exec(venue)?.[1] ??
@@ -88,9 +99,12 @@ export function conferenceVenue(
   };
   // An explicit display edit (including clearing) is not a lookup lock.
   if (!conference || sources?.venueShort === "manual") {
-    return venue && venueShort?.trim()
+    const short =
+      venueShort?.trim() ||
+      (sources?.venueShort === "manual" ? undefined : journal);
+    return venue && short
       ? {
-          label: withYear(venueShort.trim()),
+          label: journal ? short : withYear(short),
           fullName: conference?.fullName ?? venue,
         }
       : { label: venue };
