@@ -60,6 +60,7 @@ export function TaskModels({
     setAIConfig,
     aiModelSaving: saving,
     setAIModelSaving,
+    theme,
   } = useReaderStore();
   const provider = config?.primary ?? "";
   const revision = catalogRevision(config);
@@ -157,9 +158,14 @@ export function TaskModels({
     models.length > 0 &&
     !untested &&
     usableModels(provider, models, "vision").length === 0;
+  const configuredTasks = provider === "api" ? apiTasks : tasks;
+  const visibleTasks =
+    theme.translationEnabled === false
+      ? configuredTasks.filter(([task]) => task !== "translation")
+      : configuredTasks;
   return (
     <div className="flex flex-col gap-2">
-      {(provider === "api" ? apiTasks : tasks).map(([task, label]) => {
+      {visibleTasks.map(([task, label]) => {
         const { model, effort } = taskChoice(config, task);
         const usable = usableModels(provider, models, task);
         const recommended = selectedAgentModel(usable, "", task);

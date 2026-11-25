@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { saveExportBlob, exportCancelled, fileTitle } from "./download";
 import { copyText } from "./chat/clipboard";
 import { readPaperNote } from "./paper-note-state";
+import { useReaderStore } from "./store";
 import type { ChatExportSession } from "./notes-export";
 import { exportTranslatedPDF } from "./translated-pdf-export";
 import {
@@ -82,7 +83,14 @@ export function ExportDocumentDialog({
   onClose: () => void;
 }) {
   const [kinds, setKinds] = useState(savedKinds);
-  const [targets, setTargets] = useState<ExportTarget[]>(["original"]);
+  const [selectedTargets, setTargets] = useState<ExportTarget[]>(["original"]);
+  const translationEnabled = useReaderStore(
+    (state) => state.theme.translationEnabled !== false,
+  );
+  const targets = translationEnabled
+    ? selectedTargets
+    : selectedTargets.filter((target) => target !== "translation");
+  const sourceTargets = translationEnabled ? sourceRow : sourceRow.slice(0, 1);
   const [formats, setFormats] = useState<DialogFormat[]>(["markdown"]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -380,10 +388,16 @@ export function ExportDocumentDialog({
           <DialogTitle>导出</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-2" role="group" aria-label="导出内容">
-          {[sourceRow, noteRow].map((row) => (
+          {[sourceTargets, noteRow].map((row) => (
             <div
               key={row[0]}
-              className={row.length === 2 ? "grid grid-cols-2 gap-2" : "grid grid-cols-3 gap-2"}
+              className={
+                row.length === 1
+                  ? "grid"
+                  : row.length === 2
+                    ? "grid grid-cols-2 gap-2"
+                    : "grid grid-cols-3 gap-2"
+              }
             >
               {row.map((selection) => (
                 <Toggle

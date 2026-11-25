@@ -10,6 +10,7 @@ import { saveExportBlob } from "./download";
 import { exportTranslatedPDF } from "./translated-pdf-export";
 import { exportMarkdownFile, exportOriginal } from "./document-export";
 import { ExportDocumentDialog } from "./ExportDocumentDialog";
+import { useReaderStore } from "./store";
 import { paper } from "./papers/fixtures";
 vi.mock("@neoread/api", () => ({
   api: {
@@ -154,6 +155,25 @@ it("keeps only the four annotation kinds and separates original and translation"
   expect(button("原文")).toBeTruthy();
   expect(button("译文")).toBeTruthy();
 });
+it("hides the translation target and still exports the original when translation is disabled", async () => {
+  await mount();
+  await act(async () => button("译文").click());
+  await act(async () =>
+    useReaderStore.getState().setTheme({ translationEnabled: false }),
+  );
+  try {
+    expect(button("译文")).toBeUndefined();
+    expect(button("Agent 对话")).toBeDefined();
+    await act(async () => button("导出").click());
+    expect(exportOriginal).toHaveBeenCalledWith(doc, "markdown", expect.any(AbortSignal));
+    expect(api.exportTranslation).not.toHaveBeenCalled();
+  } finally {
+    await act(async () =>
+      useReaderStore.getState().setTheme({ translationEnabled: true }),
+    );
+  }
+});
+
 it.each(["Markdown", "PDF"])(
   "exports only selected annotations as %s",
   async (label) => {
