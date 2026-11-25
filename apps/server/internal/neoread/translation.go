@@ -268,6 +268,10 @@ func (s *Server) documentTranslations(w http.ResponseWriter, r *http.Request) {
 // Requests only enqueue work. The translation lane owns provider calls and persists
 // completed responses independently, so closing a reader never loses progress.
 func (s *Server) requestTranslation(w http.ResponseWriter, r *http.Request) {
+	if !s.Store.translationPreferences().enabled() {
+		s.failTranslationDisabled(w)
+		return
+	}
 	d, err := s.Store.Document(r.PathValue("id"))
 	if err != nil || (d.Type != "pdf" && d.Type != "epub") {
 		fail(w, 404, "文档不存在")

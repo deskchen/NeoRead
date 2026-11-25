@@ -54,6 +54,10 @@ func (s *Server) savePaperTitleTranslation(ctx context.Context, id, title, trans
 }
 
 func (s *Server) backfillPaperTitles(w http.ResponseWriter, r *http.Request) {
+	if !s.Store.translationPreferences().enabled() {
+		s.failTranslationDisabled(w)
+		return
+	}
 	if !s.paperTitleBackfill.CompareAndSwap(false, true) {
 		fail(w, http.StatusConflict, "正在补译论文标题")
 		return

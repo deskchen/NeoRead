@@ -27,8 +27,10 @@ func metadataText(raw json.RawMessage, limit int, empty bool) (string, error) {
 }
 
 type documentTask struct {
-	cancel context.CancelFunc
-	done   chan struct{}
+	cancel               context.CancelFunc
+	done                 chan struct{}
+	translating          bool
+	automaticTranslation bool
 }
 
 // Register before reading/writing document files. Deletion cancels and joins all
@@ -53,7 +55,7 @@ func (s *Server) beginDocumentTask(parent context.Context, id string) (context.C
 		s.documentTasks[id] = make(map[*documentTask]struct{})
 	}
 	ctx, cancel := context.WithCancel(parent)
-	task := &documentTask{cancel, make(chan struct{})}
+	task := &documentTask{cancel: cancel, done: make(chan struct{})}
 	s.documentTasks[id][task] = struct{}{}
 	return ctx, func() {
 		cancel()

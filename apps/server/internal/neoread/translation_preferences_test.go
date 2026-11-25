@@ -88,3 +88,51 @@ func TestTranslationPromptAppliesToTextButNotChatOrSource(t *testing.T) {
 		t.Fatal("translation preference leaked into chat")
 	}
 }
+
+func TestTranslationSettingsPauseLegacyAutoJobs(t *testing.T) {
+	s := testServer(t)
+	response := uploadTo(t, s, "papers", "paper.pdf", testPDF(1))
+	var doc Document
+	if err := json.Unmarshal(response.Body.Bytes(), &doc); err != nil {
+		t.Fatal(err)
+	}
+	job := Processing{
+		DocumentID: doc.ID, Enabled: true, Phase: "translating", Status: "queued",
+		Translating: &ProcessingStage{Status: "queued"},
+	}
+	write := func(job Processing) {
+		t.Helper()
+		if err := s.Store.saveProcessing(job); err != nil {
+			t.Fatal(err)
+		}
+	}
+	settings := func(body string) {
+		t.Helper()
+		w := request(t, s, "PUT", "/api/settings", strings.NewReader(body))
+		if w.Code != http.StatusOK {
+			t.Fatal(w.Body.String())
+		}
+	}
+	checkView := func(status string, enabled, manual bool) {
+		t.Helper()
+		w := request(t, s, "GET", "/api/processing", nil)
+		var jobs []Processing
+		if err := json.Unmarshal(w.Body.Bytes(), &jobs); err != nil || len(jobs) != 1 {
+			t.Fatalf("Processing response: %s (%v)", w.Body.String(), err)
+		}
+		if p := jobs[0]; p.Status != status || p.Enabled != enabled || p.ManualTranslation != manual {
+			t.Fatalf("Unexpected projection: %+v", p)
+		}
+	}
+	write(job)
+	settings(`{"autoTranslateMaxPages":0}`)
+	checkView("paused", false, true)
+	job.ManualTranslationRequested = true
+	write(job)
+	checkView("queued", true, false)
+	settings(`{"autoTranslateMaxPages":0,"translationEnabled":false}`)
+	checkView("paused", false, false)
+	if stored, err := s.Store.processing(doc.ID); err != nil || stored.Status != "queued" {
+		t.Fatalf("Stored queue was changed: %+v (%v)", stored, err)
+	}
+}

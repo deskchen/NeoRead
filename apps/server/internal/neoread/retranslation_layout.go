@@ -146,7 +146,8 @@ func (s *Server) refreshRetranslationLayout(ctx context.Context, p *Processing) 
 	if layout, ok := source.(layoutManifest); ok {
 		p.PagesDone, p.PagesTotal = layout.Pages, layout.Pages
 		if limit := p.AutoTranslateMaxPages; options.Automatic && !chapterOnly && limit != nil {
-			manual = *limit == 0 || layout.Pages > *limit
+			preferences := s.Store.translationPreferences()
+			manual = *limit == 0 || layout.Pages > *limit || !preferences.enabled()
 		}
 	}
 	if chapterOnly {

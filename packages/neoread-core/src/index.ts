@@ -403,6 +403,7 @@ export interface ReaderTheme {
   librarySidebarWidth?: number;
   autoTranslatePDF?: boolean;
   /** 0 means manual only; otherwise auto translate papers up to this many pages. */
+  translationEnabled?: boolean;
   autoTranslateMaxPages?: number;
   /** Minimum layout score for figure panels, 0.2–0.5; lower finds more subfigures. */
   layoutPanelConfidence?: number;
@@ -489,6 +490,7 @@ export const defaultTheme: ReaderTheme = {
   reducedMotion: false,
   autoCopySelection: false,
   autoTranslatePDF: true,
+  autoTranslateMaxPages: 0,
   pdfDarkImageMode: "adaptive",
   pdfDarkContrast: "soft",
   autoGenerateOverview: false,

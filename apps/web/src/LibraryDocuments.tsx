@@ -77,7 +77,9 @@ export function LibraryDocuments({
     (state) => state.libraryPreferences.papers?.showAuthors !== false,
   );
   const showBilingualTitles = useReaderStore(
-    (state) => state.libraryPreferences.showBilingualTitles === true,
+    (state) =>
+      state.theme.translationEnabled !== false &&
+      state.libraryPreferences.showBilingualTitles === true,
   );
   const overviewJobs = useOverviewJobs();
   const [selection, setSelection] = useState<Set<string>>(new Set());

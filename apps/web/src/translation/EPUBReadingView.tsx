@@ -91,6 +91,7 @@ export function EPUBReadingView({
   processing?: Processing;
   pageNavigation?: ReactNode;
 }) {
+  const translationEnabled = theme.translationEnabled !== false;
   const mode = readingMode === "reflow" ? "parallel" : readingMode;
   const reflow = theme.textReflow === true;
   const [companions, setCompanions] = useState<Map<string, HTMLElement>>(
@@ -106,7 +107,7 @@ export function EPUBReadingView({
   const { translations, error: streamError } = useTranslations(
     doc.id,
     [...new Set(blocks.map((b) => b.location.href))],
-    active,
+    active && translationEnabled,
     layoutRevision,
   );
   const root = useRef<HTMLDivElement>(null);
@@ -235,7 +236,7 @@ export function EPUBReadingView({
     doc.id,
     anchor && { location: anchor },
     `${processing?.updatedAt ?? ""}|${translationRevision}`,
-    active,
+    active && translationEnabled,
   );
   const live = useRef({
     mode,
@@ -1022,7 +1023,8 @@ export function EPUBReadingView({
         { "--reading-margin": `${theme.readingMargin}px` } as CSSProperties
       }
     >
-      {toolbarHost ? createPortal(toolbar, toolbarHost) : toolbar}
+      {translationEnabled &&
+        (toolbarHost ? createPortal(toolbar, toolbarHost) : toolbar)}
       <TranslationPanes
         mode={reflow ? "source" : mode}
         swapped={swapped}

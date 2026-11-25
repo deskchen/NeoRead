@@ -169,6 +169,10 @@ ON CONFLICT(document_id,block_id,source_hash) DO UPDATE SET status=excluded.stat
 // Requesting a range is explicit consent, so it also resumes paused processing.
 // Book pages that were never parsed go through the layout lane first.
 func (s *Server) requestTranslationRange(w http.ResponseWriter, r *http.Request) {
+	if !s.Store.translationPreferences().enabled() {
+		s.failTranslationDisabled(w)
+		return
+	}
 	d, err := s.Store.Document(r.PathValue("id"))
 	if err != nil || d.Type != "pdf" {
 		fail(w, 404, "PDF 不存在")

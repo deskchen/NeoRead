@@ -351,7 +351,7 @@ func (s *Server) lookupDocument(ctx context.Context, id string, useCurrentTitle 
 		}
 		s.diagnosticEvent(slog.LevelInfo, "paper.title.lookup", "documentId", id, "outcome", outcome)
 	}
-	if translated != "" {
+	if translated != "" && s.Store.translationPreferences().enabled() {
 		if _, err := s.savePaperTitleTranslation(ctx, id, suggestion, translated); err != nil && ctx.Err() == nil {
 			s.diagnosticEvent(slog.LevelWarn, "paper.title.ai", "documentId", id, "outcome", "failed", "reason", "translation_not_saved")
 		}

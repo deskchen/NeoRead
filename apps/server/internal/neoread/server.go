@@ -288,6 +288,12 @@ func (s *Server) Handler() http.Handler {
 				return
 			}
 		}
+		if value, exists := v["translationEnabled"]; exists {
+			if _, ok := value.(bool); !ok {
+				fail(w, 400, "Translation features must be a boolean")
+				return
+			}
+		}
 		if value, exists := v["autoTranslatePDF"]; exists {
 			if _, ok := value.(bool); !ok {
 				fail(w, 400, "自动翻译设置必须为布尔值")
@@ -309,11 +315,14 @@ func (s *Server) Handler() http.Handler {
 			}
 		}
 		b, _ := json.Marshal(v)
+		s.processingMu.Lock()
+		defer s.processingMu.Unlock()
 		_, err := s.Store.DB.Exec("INSERT INTO settings VALUES('neoread',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", string(b))
 		if err != nil {
 			fail(w, 500, "设置保存失败")
 			return
 		}
+		s.pauseDisabledTranslation(decodeTranslationPreferences(b))
 		respond(w, 200, v)
 	})
 	mux.HandleFunc("GET /pub/{cap}/{id}/{resource...}", s.resource)

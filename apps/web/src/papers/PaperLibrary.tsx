@@ -273,7 +273,9 @@ export function PaperLibrary({
   const graph = layout === "graph" && view !== "duplicates";
   const showAuthors = prefs.showAuthors !== false;
   const showBilingualTitles = useReaderStore(
-    (state) => state.libraryPreferences.showBilingualTitles === true,
+    (state) =>
+      state.theme.translationEnabled !== false &&
+      state.libraryPreferences.showBilingualTitles === true,
   );
   const cardScale = prefs.cardScale || 1;
   const [listPane, setListPane] = useState<HTMLElement | null>(null);
@@ -1402,12 +1404,16 @@ export function PaperLibrary({
 }
 
 function PaperProcessing({ job }: { job?: Processing }) {
+  const translationEnabled = useReaderStore(
+    (state) => state.theme.translationEnabled !== false,
+  );
   const [retrying, setRetrying] = useState(false);
   const retryLock = useRef(false);
   useEffect(() => {
     retryLock.current = false;
     setRetrying(false);
   }, [job?.updatedAt]);
+  if (!translationEnabled && job?.phase !== "learning") return null;
   if (job?.manualTranslation && !job.enabled && job.phase !== "learning") {
     return (
       <Button

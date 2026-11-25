@@ -98,20 +98,33 @@ func (s *Server) processTranslation(ctx context.Context, p *Processing) error {
 		}
 		return err
 	}
+	suspended := false
 	if runErr == nil {
+		s.processingMu.Lock()
+		preferences := s.Store.translationPreferences()
+		automatic := automaticTranslation(work)
+		suspended = !preferences.enabled() || (automatic && !preferences.automatic())
+		if task := s.activeProcessing[work.DocumentID]; task != nil && !suspended {
+			task.translating, task.automaticTranslation = true, automatic
+		}
+		s.processingMu.Unlock()
+	}
+	if runErr == nil && !suspended {
 		m, runErr = s.readTranslationSource(work.DocumentID)
 		source = m
 		if runErr == nil && len(work.TranslationBlocks) > 0 {
 			m = selectTranslationBlocks(m, work.TranslationBlocks)
 		}
 	}
-	if runErr == nil {
+	if runErr == nil && !suspended {
 		if layout, ok := m.(layoutManifest); ok && work.Retranslating {
 			work.PagesDone, work.PagesTotal = layout.Pages, layout.Pages
 		}
 		runErr = s.translateContent(ctx, &work, m)
 	}
-	if ctx.Err() != nil {
+	if suspended {
+		work.Status, work.Detail = "queued", "Translation paused in settings"
+	} else if ctx.Err() != nil {
 		work.Status, work.Detail = "queued", "已暂停，将在下次启动时继续"
 	} else if runErr != nil {
 		work.Status, work.Detail = "failed", runErr.Error()
@@ -119,7 +132,7 @@ func (s *Server) processTranslation(ctx context.Context, p *Processing) error {
 		work.Status, work.Detail = "complete", "已完成"
 	}
 	s.processingMu.Lock()
-	if runErr == nil && ctx.Err() == nil && work.Status != "waiting" {
+	if runErr == nil && !suspended && ctx.Err() == nil && work.Status != "waiting" {
 		items, readErr := s.translations(work.DocumentID, m)
 		if readErr == nil {
 			for _, item := range items {

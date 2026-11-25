@@ -21,12 +21,13 @@ type ProcessingStage struct {
 	Warning string `json:"warning,omitempty"`
 }
 type Processing struct {
-	AutoTranslateMaxPages *int   `json:"autoTranslateMaxPages,omitempty"`
-	ManualTranslation     bool   `json:"manualTranslation,omitempty"`
-	Enabled               bool   `json:"enabled"`
-	EPUBManual            bool   `json:"epubManual,omitempty"`
-	Retranslating         bool   `json:"retranslating,omitempty"`
-	LayoutRevision        string `json:"layoutRevision,omitempty"`
+	AutoTranslateMaxPages      *int   `json:"autoTranslateMaxPages,omitempty"`
+	ManualTranslationRequested bool   `json:"manualTranslationRequested,omitempty"`
+	ManualTranslation          bool   `json:"manualTranslation,omitempty"`
+	Enabled                    bool   `json:"enabled"`
+	EPUBManual                 bool   `json:"epubManual,omitempty"`
+	Retranslating              bool   `json:"retranslating,omitempty"`
+	LayoutRevision             string `json:"layoutRevision,omitempty"`
 	// TranslationBlocks isolates explicit units from inactive full-document work.
 	TranslationBlocks    []string `json:"translationBlocks,omitempty"`
 	TranslationScopeKind string   `json:"translationScopeKind,omitempty"`
@@ -166,9 +167,6 @@ func (s *Store) recoverPausedPaperParsing() error {
 // PDF books wait for an explicit chapter request before layout or translation.
 func importedProcessing(id, library, value string) Processing {
 	p := initialProcessing(id)
-	var settings struct {
-		AutoTranslateMaxPages *int `json:"autoTranslateMaxPages"`
-	}
 	if library == "books" {
 		// Book chapters are parsed and translated when the reader asks.
 		p.Enabled = true
@@ -178,8 +176,8 @@ func importedProcessing(id, library, value string) Processing {
 	}
 	// Automatic translation spends model quota, so it stays off until the user sets a page limit.
 	limit := 0
-	if value != "" && json.Unmarshal([]byte(value), &settings) == nil && settings.AutoTranslateMaxPages != nil {
-		limit = *settings.AutoTranslateMaxPages
+	if settings := decodeTranslationPreferences([]byte(value)); settings.enabled() && settings.AutoMaxPages != nil {
+		limit = *settings.AutoMaxPages
 	}
 	p.AutoTranslateMaxPages = &limit
 	p.Enabled, p.Status, p.Detail = true, "queued", "等待解析 PDF"
@@ -213,6 +211,7 @@ func (s *Store) enqueueDocument(d Document) error {
 	return e
 }
 func (s *Server) processingList(w http.ResponseWriter, r *http.Request) {
+	preferences := s.Store.translationPreferences()
 	books, e := s.Store.bookLayoutJobs()
 	if e != nil {
 		fail(w, 500, "无法读取解析进度")
@@ -237,6 +236,7 @@ func (s *Server) processingList(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		normalizeNoTextProcessing(&p)
+		preferences.applyToView(&p)
 		view := processingView{Processing: p}
 		if job, ok := books[p.DocumentID]; ok {
 			view.BookLayout = &job
@@ -446,8 +446,23 @@ func (s *Server) StartProcessing(parent context.Context) func() {
 				}
 				s.processingMu.Lock()
 				var body string
+				var localReparse bool
+				preferences := s.Store.translationPreferences()
 				// Documents in the trash keep their queue position until restored.
-				e := s.Store.DB.QueryRow("SELECT p.body FROM document_processing p JOIN documents d ON d.id=p.document_id WHERE p.phase=? AND p.status='queued' AND (json_extract(p.body,'$.enabled')=1 OR json_array_length(json_extract(p.body,'$.translationBlocks'))>0) AND d.deleted_at='' ORDER BY p.rowid LIMIT 1", phase).Scan(&body)
+				e := s.Store.DB.QueryRow(`
+SELECT p.body, COALESCE(json_extract(tr.options,'$.automatic'),0) = 1
+  AND COALESCE(json_extract(tr.options,'$.layoutReady'),0) = 0 AS local_reparse
+FROM document_processing p
+JOIN documents d ON d.id=p.document_id
+LEFT JOIN translation_restarts tr ON tr.document_id=p.document_id
+WHERE p.phase=? AND p.status='queued' AND d.deleted_at=''
+  AND (json_extract(p.body,'$.enabled')=1 OR json_array_length(json_extract(p.body,'$.translationBlocks'))>0)
+  AND (p.phase<>'translating' OR local_reparse OR (? AND (
+    ? OR json_extract(p.body,'$.manualTranslationRequested')=1
+    OR json_extract(p.body,'$.retranslating')=1
+    OR json_array_length(json_extract(p.body,'$.translationBlocks'))>0
+  )))
+ORDER BY p.rowid LIMIT 1`, phase, preferences.enabled(), preferences.automatic()).Scan(&body, &localReparse)
 				var p Processing
 				if e == nil {
 					e = json.Unmarshal([]byte(body), &p)
@@ -458,7 +473,7 @@ func (s *Server) StartProcessing(parent context.Context) func() {
 				var task *documentTask
 				workContext := ctx
 				if e == nil {
-					task = &documentTask{done: make(chan struct{})}
+					task = &documentTask{done: make(chan struct{}), translating: phase == "translating" && !localReparse, automaticTranslation: automaticTranslation(p)}
 					workContext, task.cancel = context.WithCancel(ctx)
 					if s.activeProcessing == nil {
 						s.activeProcessing = map[string]*documentTask{}
@@ -623,7 +638,8 @@ func (s *Server) learnPDF(ctx context.Context, p *Processing) error {
 		return e
 	}
 	p.TranslationsDone, p.TranslationsTotal = translationCounts(items)
-	if limit := p.AutoTranslateMaxPages; limit != nil && (*limit == 0 || m.Pages > *limit) {
+	preferences := s.Store.translationPreferences()
+	if limit := p.AutoTranslateMaxPages; limit != nil && (*limit == 0 || m.Pages > *limit || !preferences.automatic() || !preferences.enabled()) {
 		p.Enabled = false
 		p.ManualTranslation = true
 		p.Phase, p.Status, p.Detail = "translating", "paused", "解析完成，等待手动翻译"

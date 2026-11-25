@@ -5,6 +5,7 @@ import { api } from "@neoread/api";
 import { Progress } from "@neoread/ui/components/progress";
 import { Button } from "@neoread/ui/components/button";
 import { toast } from "sonner";
+import { useReaderStore } from "./store";
 
 const activePollMs = 1200;
 const idlePollMs = 10_000;
@@ -149,6 +150,9 @@ export function CoverProcessing({
   unavailable?: boolean;
   learningName?: "学习" | "解析";
 }) {
+  const translationEnabled = useReaderStore(
+    (state) => state.theme.translationEnabled !== false,
+  );
   const nextPhase = coverPhase(job);
   const [phase, setPhase] = useState(nextPhase);
   const [retrying, setRetrying] = useState(false);
@@ -163,7 +167,10 @@ export function CoverProcessing({
     const timer = setTimeout(() => setPhase(nextPhase), 750);
     return () => clearTimeout(timer);
   }, [leaving, nextPhase]);
-  if (job.status === "paused")
+  if (
+    job.status === "paused" ||
+    (!translationEnabled && job.phase === "translating")
+  )
     return job.bookLayout ? <CoverBookLayout layout={job.bookLayout} /> : null;
   if (phase === "ready")
     return job.bookLayout ? (

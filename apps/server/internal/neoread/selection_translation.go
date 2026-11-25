@@ -55,6 +55,10 @@ func generateSelectionTranslation(ctx context.Context, g *GenerationService, inp
 }
 
 func (s *Server) translateSelection(w http.ResponseWriter, r *http.Request) {
+	if !s.Store.translationPreferences().enabled() {
+		s.failTranslationDisabled(w)
+		return
+	}
 	var input selectionTranslationInput
 	if !decode(w, r, &input) {
 		return

@@ -179,7 +179,9 @@ export function PaperDetail({
   const all = useReaderStore((s) => s.documents);
   const prefs = useReaderStore((s) => s.libraryPreferences.papers) || {};
   const showBilingualTitles = useReaderStore(
-    (s) => s.libraryPreferences.showBilingualTitles === true,
+    (s) =>
+      s.theme.translationEnabled !== false &&
+      s.libraryPreferences.showBilingualTitles === true,
   );
   const translated = showBilingualTitles
     ? displayTitleTranslation(doc)

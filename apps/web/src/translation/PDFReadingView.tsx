@@ -126,6 +126,7 @@ export function PDFReadingView({
 }) {
   const { swapped, sourceWidth } = readerLayout(theme.readerLayout);
   // The PDF engine stays mounted, hidden, for outline, search and navigation.
+  const translationEnabled = theme.translationEnabled !== false;
   const reflow = theme.textReflow === true;
   const sourceOnly = reflow && readingMode === "source";
   const blockSelector = reflow
@@ -140,7 +141,7 @@ export function PDFReadingView({
   const { translations: streamed, error } = useTranslations(
     doc.id,
     undefined,
-    active,
+    active && translationEnabled,
     layoutRevision,
   );
   const [blockLayout, setBlockLayout] = useState({ blocks, layoutRevision });
@@ -1215,12 +1216,12 @@ export function PDFReadingView({
     doc.id,
     bookChapter,
     `${processing?.updatedAt ?? ""}|${blocks.length}|${chapterRevision}`,
-    active && book && !sourceOnly,
+    active && translationEnabled && book && !sourceOnly,
   );
   const toolbar = (
     <div className="translation-toolbar">
-      {autoCenterHost === undefined && autoCenterButton}
-      {book && !sourceOnly && (
+      {translationEnabled && autoCenterHost === undefined && autoCenterButton}
+      {translationEnabled && book && !sourceOnly && (
         <BookChapterControls
           documentId={doc.id}
           processing={processing}
@@ -1244,22 +1245,24 @@ export function PDFReadingView({
         <AssistanceControls
           document={doc}
           processing={processing}
-          showTranslation={!sourceOnly}
+          showTranslation={translationEnabled && !sourceOnly}
         />
       )}
-      <Tabs
-        value={readingMode}
-        onValueChange={(value) => changeMode(value as ReadingMode)}
-      >
-        <TabsList>
-          <TabsTrigger value="source">原文</TabsTrigger>
-          <TabsTrigger value="parallel" data-tour="parallel-mode">
-            对照
-          </TabsTrigger>
-          <TabsTrigger value="reflow">重排</TabsTrigger>
-          <TabsTrigger value="translation">译文</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      {translationEnabled && (
+        <Tabs
+          value={readingMode}
+          onValueChange={(value) => changeMode(value as ReadingMode)}
+        >
+          <TabsList>
+            <TabsTrigger value="source">原文</TabsTrigger>
+            <TabsTrigger value="parallel" data-tour="parallel-mode">
+              对照
+            </TabsTrigger>
+            <TabsTrigger value="reflow">重排</TabsTrigger>
+            <TabsTrigger value="translation">译文</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      )}
     </div>
   );
   // Rows are memoized; their handlers must keep one identity across renders.
@@ -1316,7 +1319,9 @@ export function PDFReadingView({
       data-theme={theme.mode}
       data-dark-contrast={theme.pdfDarkContrast ?? "soft"}
     >
-      {autoCenterHost && createPortal(autoCenterButton, autoCenterHost)}
+      {translationEnabled &&
+        autoCenterHost &&
+        createPortal(autoCenterButton, autoCenterHost)}
       {toolbarHost ? createPortal(toolbar, toolbarHost) : toolbar}
       {(mode === "translation" || reflow) && (
         <div className="pdf-reading-controls">

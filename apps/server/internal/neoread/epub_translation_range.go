@@ -241,6 +241,10 @@ type epubTranslationRange struct {
 }
 
 func (s *Server) requestEPUBTranslationChapter(w http.ResponseWriter, r *http.Request) {
+	if !s.Store.translationPreferences().enabled() {
+		s.failTranslationDisabled(w)
+		return
+	}
 	d, err := s.Store.Document(r.PathValue("id"))
 	if err != nil || d.Type != "epub" {
 		fail(w, 404, "EPUB 不存在")

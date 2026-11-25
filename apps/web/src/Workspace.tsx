@@ -186,7 +186,7 @@ export function Workspace({
   onSettings: () => void;
 }) {
   const { aiConfig, setAIConfig, aiModelSaving } = useReaderStore();
-  const readingMode = useReaderStore(
+  const savedReadingMode = useReaderStore(
     (state) => state.theme.documentReadingModes?.[doc.id] ?? "source",
   );
   const setReadingMode = (mode: ReadingMode) => {
@@ -203,7 +203,10 @@ export function Workspace({
     setTheme,
     onZoom,
   } = useDocumentTheme(sharedTheme, doc, active);
+  const translationEnabled = documentTheme.translationEnabled !== false;
+  const readingMode = translationEnabled ? savedReadingMode : "source";
   const sourceReflow =
+    translationEnabled &&
     doc.type === "pdf" &&
     readingMode === "source" &&
     documentTheme.sourceReflow === true;
@@ -358,6 +361,9 @@ export function Workspace({
   const [leftTab, setLeftTab] = useState("toc");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
+  const visibleResults = translationEnabled
+    ? results
+    : results.filter((result) => result.side !== "translation");
   const [searchedQuery, setSearchedQuery] = useState("");
   const searchInput = useRef<HTMLInputElement>(null);
   const [searching, setSearching] = useState(false);
@@ -1021,7 +1027,10 @@ export function Workspace({
     }
   };
   // Requests from the translation pane quote the translation after its source.
-  const explainBlock = (source: ReaderSelection, translation?: ReaderSelection) =>
+  const explainBlock = (
+    source: ReaderSelection,
+    translation?: ReaderSelection,
+  ) =>
     void send(
       translation
         ? "请解释这段原文的含义，引用依次为原文及其译文；区分原文结论与你的补充说明。"
@@ -1432,7 +1441,7 @@ export function Workspace({
                 </form>
                 <ScrollArea className="min-h-0 flex-1">
                   <div className="sidebar-search-results pb-12">
-                    {results.map((result) => (
+                    {visibleResults.map((result) => (
                       <Button
                         key={result.id}
                         variant="ghost"
@@ -1461,7 +1470,7 @@ export function Workspace({
                   role="status"
                   className="pointer-events-none absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full border border-border bg-popover px-3 py-1 text-xs whitespace-nowrap text-muted-foreground shadow-sm"
                 >
-                  {searching ? "正在搜索…" : `${results.length} 个结果`}
+                  {searching ? "正在搜索…" : `${visibleResults.length} 个结果`}
                 </p>
               </TabsContent>
             </Tabs>
@@ -1490,7 +1499,7 @@ export function Workspace({
                   toolbarHost={readingToolbar}
                   autoCenterHost={sourceAutoCenterToolbar}
                   pageNavigation={pageNavigation}
-                  searchResults={results}
+                  searchResults={visibleResults}
                   searchQuery={searchedQuery}
                   onReady={(engine, items) => {
                     setAdapter(engine);
@@ -1591,7 +1600,7 @@ export function Workspace({
                 <IconButton label="引用到对话" onClick={addQuote}>
                   <Quote />
                 </IconButton>
-                {!sourceReflow && (
+                {translationEnabled && !sourceReflow && (
                   <IconButton
                     label="划词翻译"
                     onClick={() => {
@@ -1896,7 +1905,11 @@ export function Workspace({
 
       <SelectionTranslation
         key={doc.id}
-        selection={active && !sourceReflow ? translationSelection : null}
+        selection={
+          active && translationEnabled && !sourceReflow
+            ? translationSelection
+            : null
+        }
         onClose={() => setTranslationSelection(null)}
       />
       <AnnotationHoverCard

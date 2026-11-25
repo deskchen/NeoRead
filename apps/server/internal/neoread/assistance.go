@@ -23,6 +23,7 @@ func (s *Server) getAssistance(w http.ResponseWriter, r *http.Request) {
 			p = initialDocumentProcessing(d, "")
 		}
 	}
+	s.Store.translationPreferences().applyToView(&p)
 	respond(w, 200, p)
 }
 func (s *Server) setAssistance(w http.ResponseWriter, r *http.Request) {
@@ -30,6 +31,10 @@ func (s *Server) setAssistance(w http.ResponseWriter, r *http.Request) {
 		Action string `json:"action"`
 	}
 	if !decode(w, r, &req) {
+		return
+	}
+	if req.Action != "pause" && !s.Store.translationPreferences().enabled() {
+		s.failTranslationDisabled(w)
 		return
 	}
 	if req.Action == "retranslate" {
@@ -126,6 +131,7 @@ func (s *Server) setAssistance(w http.ResponseWriter, r *http.Request) {
 		if options == nil || !options.Automatic {
 			p.AutoTranslateMaxPages = nil
 			p.ManualTranslation = false
+			p.ManualTranslationRequested = true
 		}
 		p.Status, p.Detail = "queued", "等待继续处理"
 		// Prepare the complete manifest; cached completed results remain reusable.
