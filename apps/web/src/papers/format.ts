@@ -72,19 +72,19 @@ export function arxivMonthLabel(metadata: PaperMetadata) {
   const legacy = /^[a-z.\-]+\/(\d{2})(0[1-9]|1[0-2])\d{3}(?:v\d+)?$/i.exec(id);
   const match = modern ?? legacy;
   if (match) {
-    return `arxiv-${match[1]}-${match[2]}`;
+    return `arXiv-${match[1]}-${match[2]}`;
   }
   const date = /^(?:19|20)(\d{2}-(?:0[1-9]|1[0-2]))(?:-|$)/.exec(
     metadata.date ?? "",
   );
-  return date ? `arxiv-${date[1]}` : "";
+  return date ? `arXiv-${date[1]}` : "";
 }
 
 export function venueLabel(metadata: PaperMetadata) {
   const venue = metadata.venue?.trim() ?? "";
   if (venue && !arxivVenue.test(venue)) return metadata.venue ?? "";
   if (!venue && !metadata.arxiv) return "";
-  return arxivMonthLabel(metadata) || "arxiv";
+  return arxivMonthLabel(metadata) || "arXiv";
 }
 
 /** Author · year · venue for list rows. */
@@ -95,7 +95,7 @@ export function paperByline(
   const venue = venueLabel(doc.metadata);
   return [
     showAuthors ? authorsShort(doc) : "",
-    venue.startsWith("arxiv-") ? "" : paperYear(doc.metadata),
+    venue.startsWith("arXiv-") ? "" : paperYear(doc.metadata),
     venue,
   ]
     .filter(Boolean)
