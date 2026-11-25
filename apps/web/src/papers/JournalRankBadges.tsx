@@ -10,7 +10,7 @@ import { Button } from "@neoread/ui/components/button";
 
 function tone(badge: JournalRankBadge) {
   const value = badge.value.trim().toUpperCase();
-  if (/\bQ1\b|(?:^|\D)1区|^A\+?$|^T1$/.test(value)) return "high";
+  if (/\bQ1\b|(?:^|\D)1区|^A[+*]?$|^T1$/.test(value)) return "high";
   if (/\bQ2\b|(?:^|\D)2区|^B$|^T2$/.test(value)) return "mid";
   if (/\bQ3\b|(?:^|\D)3区|^C$|^T3$/.test(value)) return "low";
   if (/\bQ4\b|(?:^|\D)4区/.test(value)) return "basic";
@@ -40,6 +40,9 @@ export function JournalRankBadges({
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
   const [visibleCount, setVisibleCount] = useState(Infinity);
+  const enabled = !!config?.enabled && (config.hasKey || ["core", "thcpl"].some(
+    (key) => config.selected.includes(key) !== (config.filterMode === "exclude"),
+  ));
   const lastRefresh = useRef({ refreshRevision, retry });
   useEffect(() => {
     const force =
@@ -48,7 +51,7 @@ export function JournalRankBadges({
     lastRefresh.current = { refreshRevision, retry };
     setResult(null);
     setError("");
-    if (!config?.enabled || !config.hasKey || !venue.trim()) return;
+    if (!enabled || !venue.trim()) return;
     let cancelled = false;
     let observer: IntersectionObserver | undefined;
     const run = () => {
@@ -80,7 +83,7 @@ export function JournalRankBadges({
     id,
     venue,
     venueShort,
-    config?.enabled,
+    enabled,
     config?.hasKey,
     refreshRevision,
     retry,
@@ -118,7 +121,7 @@ export function JournalRankBadges({
     observer.observe(container);
     return () => observer.disconnect();
   }, [result, config?.filterMode, config?.selected]);
-  if (!config?.enabled || !config.hasKey || !venue.trim()) return null;
+  if (!enabled || !venue.trim()) return null;
   return (
     <div className="journal-rank-badges" ref={ref} data-row-action>
       {badges.map((badge, index) => (

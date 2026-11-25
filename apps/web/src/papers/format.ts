@@ -62,9 +62,30 @@ export function shortTitle(doc: Pick<Document, "title" | "metadata">) {
   return head.length >= 4 ? head : doc.title;
 }
 
+const arxivVenue =
+  /^arxiv(?:\.org|\s+preprint)?(?:\s*(?:arxiv)?\s*[: ]\s*([a-z.\-\d/]+))?$/i;
+
+export function arxivMonth(metadata: PaperMetadata) {
+  const id =
+    metadata.arxiv || arxivVenue.exec(metadata.venue?.trim() ?? "")?.[1] || "";
+  const modern = /^(\d{2})(0[1-9]|1[0-2])\.\d{4,5}(?:v\d+)?$/i.exec(id);
+  const legacy = /^[a-z.\-]+\/(\d{2})(0[1-9]|1[0-2])\d{3}(?:v\d+)?$/i.exec(id);
+  const match = modern ?? legacy;
+  if (match) {
+    const century = legacy && Number(match[1]) >= 91 ? "19" : "20";
+    return `${century}${match[1]}-${match[2]}`;
+  }
+  return (
+    /^(?:19|20)\d{2}-(?:0[1-9]|1[0-2])/.exec(metadata.date ?? "")?.[0] ?? ""
+  );
+}
+
 export function venueLabel(metadata: PaperMetadata) {
-  if (metadata.venue) return metadata.venue;
-  return metadata.arxiv ? `arXiv:${metadata.arxiv}` : "";
+  const venue = metadata.venue?.trim() ?? "";
+  if (venue && !arxivVenue.test(venue)) return metadata.venue ?? "";
+  if (!venue && !metadata.arxiv) return "";
+  const month = arxivMonth(metadata);
+  return month ? `arXiv ${month}` : "arXiv";
 }
 
 /** Author · year · venue for list rows. */
@@ -72,10 +93,11 @@ export function paperByline(
   doc: Pick<Document, "author" | "metadata">,
   showAuthors = true,
 ) {
+  const venue = venueLabel(doc.metadata);
   return [
     showAuthors ? authorsShort(doc) : "",
-    paperYear(doc.metadata),
-    venueLabel(doc.metadata),
+    venue.startsWith("arXiv ") ? "" : paperYear(doc.metadata),
+    venue,
   ]
     .filter(Boolean)
     .join(" · ");

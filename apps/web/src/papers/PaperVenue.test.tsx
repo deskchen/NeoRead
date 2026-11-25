@@ -54,15 +54,15 @@ it.each([
   expect(document.activeElement).toBe(trigger);
 });
 
-it("limits the list tooltip to the venue, not its author and year", async () => {
+it("displays the conference year with its abbreviation only once", async () => {
   const doc = paper({
     author: "Ada",
     metadata: { date: "2023", venue: "ICML" },
   });
   await act(async () => root.render(<PaperByline doc={doc} showAuthors />));
-  expect(host.textContent).toBe("Ada · 2023 · ICML");
+  expect(host.textContent).toBe("Ada · ICML'23");
   const trigger = host.querySelector("[data-slot=tooltip-trigger]")!;
-  expect(trigger.textContent).toBe("ICML");
+  expect(trigger.textContent).toBe("ICML'23");
   expect(trigger.parentElement!.hasAttribute("title")).toBe(false);
 });
 

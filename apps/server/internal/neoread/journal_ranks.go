@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -19,13 +20,14 @@ import (
 
 var journalRankURL = "https://www.easyscholar.cc/open/getPublicationRank"
 
-var defaultJournalRankFields = []string{"sciif", "sci", "sciUp", "sciUpSmall", "ccf"}
+var defaultJournalRankFields = []string{"sciif", "sci", "sciUp", "sciUpSmall", "ccf", "core", "thcpl"}
 var journalRankFieldOrder = []string{"sciif", "sciif5", "jci", "sci", "ssci", "sciUp", "sciUpSmall", "sciBase", "sciBaseSmall", "sciUpTop"}
 
 var journalRankNames = map[string]string{
 	"sciif": "IF", "sciif5": "五年 IF", "jci": "JCI", "sci": "SCI/JCR",
 	"ssci": "SSCI/JCR", "sciUp": "中科院", "sciUpSmall": "中科院小类",
 	"sciBase": "中科院基础版", "sciBaseSmall": "中科院基础版小类",
+	"core": "CORE", "thcpl": "THCPL",
 	"ccf": "CCF", "cscd": "CSCD", "pku": "北大核心", "cssci": "CSSCI",
 	"ahci": "A&HCI", "ajg": "AJG", "fms": "FMS", "ft50": "FT50",
 	"utd24": "UTD24", "scopus": "Scopus", "eii": "EI", "sciwarn": "中科院预警",
@@ -449,7 +451,7 @@ func (s *Server) documentJournalRank(w http.ResponseWriter, r *http.Request) {
 		fail(w, 500, "无法读取期刊指标设置")
 		return
 	}
-	if !config.Enabled || key == "" {
+	if !config.Enabled {
 		queryStatus = "disabled"
 		respond(w, 200, journalRankResult{Status: "disabled", Badges: []journalRankBadge{}})
 		return
@@ -468,6 +470,23 @@ func (s *Server) documentJournalRank(w http.ResponseWriter, r *http.Request) {
 	if publicationName == "" {
 		queryStatus = "noVenue"
 		respond(w, 200, journalRankResult{Status: "noVenue", Badges: []journalRankBadge{}})
+		return
+	}
+	localBadges := localVenueRankBadges(publicationName, doc.Metadata.ItemType)
+	localBadges = slices.DeleteFunc(localBadges, func(badge journalRankBadge) bool {
+		return slices.Contains(config.Selected, badge.Key) == (config.FilterMode == "exclude")
+	})
+	withLocal := func(result journalRankResult) journalRankResult {
+		if len(localBadges) > 0 {
+			result.Badges = append(localBadges, result.Badges...)
+			result.Status = "found"
+		}
+		return result
+	}
+	if key == "" {
+		result := withLocal(journalRankResult{Status: "disabled", Badges: []journalRankBadge{}})
+		queryStatus = result.Status
+		respond(w, 200, result)
 		return
 	}
 	queries := []string{publicationName}
@@ -501,8 +520,9 @@ func (s *Server) documentJournalRank(w http.ResponseWriter, r *http.Request) {
 	refresh := r.URL.Query().Get("refresh") == "1"
 	if cached, ok := s.cachedJournalRank(name, hash, refresh); ok {
 		cacheHit = true
-		queryStatus = cached.Status
-		respond(w, 200, cached)
+		result := withLocal(cached)
+		queryStatus = result.Status
+		respond(w, 200, result)
 		return
 	}
 	value, err, shared := s.journalRankRequests.Do(hash+":"+name, func() (any, error) {
@@ -528,9 +548,14 @@ func (s *Server) documentJournalRank(w http.ResponseWriter, r *http.Request) {
 		return result, nil
 	})
 	if err != nil {
+		if len(localBadges) > 0 {
+			respond(w, 200, withLocal(journalRankResult{Status: "notFound"}))
+			return
+		}
 		fail(w, 502, err.Error())
 		return
 	}
-	queryStatus = value.(journalRankResult).Status
-	respond(w, 200, value)
+	result := withLocal(value.(journalRankResult))
+	queryStatus = result.Status
+	respond(w, 200, result)
 }

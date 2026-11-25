@@ -1,6 +1,24 @@
 import { expect, it } from "vitest";
 import conferences from "../../../server/internal/neoread/conferences.json";
 import { conferenceVenue } from "./conferences";
+
+it("includes the proceedings year in a conference label when requested", () => {
+  expect(
+    conferenceVenue(
+      { venue: "ASPLOS", date: "2025-03", itemType: "conference" },
+      true,
+    ).label,
+  ).toBe("ASPLOS'25");
+  expect(
+    conferenceVenue(
+      { venue: "ASPLOS 2025", date: "2026", itemType: "conference" },
+      true,
+    ).label,
+  ).toBe("ASPLOS'25");
+  expect(conferenceVenue({ venue: "ASPLOS ’25" }, true).label).toBe(
+    "ASPLOS'25",
+  );
+});
 import { paperByline, venueLabel } from "./format";
 import { paper } from "./fixtures";
 
@@ -34,7 +52,15 @@ it.each([
 });
 
 it("retains arXiv fallback when no venue exists", () => {
-  expect(venueLabel({ arxiv: "1706.03762" })).toBe("arXiv:1706.03762");
+  expect(venueLabel({ arxiv: "1706.03762" })).toBe("arXiv 2017-06");
+  expect(venueLabel({ venue: "arXiv:2503.01234" })).toBe("arXiv 2025-03");
+  expect(venueLabel({ arxiv: "hep-th/9901001v2" })).toBe("arXiv 1999-01");
+  expect(
+    venueLabel({
+      venue: "arXiv preprint arXiv:2503.01234",
+      arxiv: "2503.01234",
+    }),
+  ).toBe("arXiv 2025-03");
   expect(venueLabel({})).toBe("");
 });
 

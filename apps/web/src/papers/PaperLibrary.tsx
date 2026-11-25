@@ -105,6 +105,7 @@ import {
   setStarred,
 } from "./actions";
 import {
+  arxivMonth,
   authorsShort,
   paperYear,
   publicationDate,
@@ -1707,7 +1708,7 @@ function PaperRow({
       case "doi":
         return doc.metadata.doi || "—";
       case "arxiv":
-        return doc.metadata.arxiv || "—";
+        return doc.metadata.arxiv ? arxivMonth(doc.metadata) || "—" : "—";
       case "tags":
         return doc.tags.length ? (
           <div className="paper-table-tags" title={doc.tags.join("、")}>
@@ -1856,13 +1857,11 @@ function PaperRow({
                   title={
                     column === "doi"
                       ? doc.metadata.doi
-                      : column === "arxiv"
-                        ? doc.metadata.arxiv
-                        : column === "added"
-                          ? new Date(doc.createdAt).toLocaleString("zh-CN")
-                          : column === "opened" && wasOpened(doc)
-                            ? new Date(doc.lastOpenedAt).toLocaleString("zh-CN")
-                            : undefined
+                      : column === "added"
+                        ? new Date(doc.createdAt).toLocaleString("zh-CN")
+                        : column === "opened" && wasOpened(doc)
+                          ? new Date(doc.lastOpenedAt).toLocaleString("zh-CN")
+                          : undefined
                   }
                 >
                   {column === columns[0] && !columns.includes("title") && (

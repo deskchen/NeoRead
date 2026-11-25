@@ -318,7 +318,7 @@ it("shares manual edits, clearing and new-venue inference between table and deta
     },
   };
   await edit("出处简称", "NIPS 2017", edited);
-  expect(cell().textContent).toBe("NIPS 2017");
+  expect(cell().textContent).toBe("NIPS'17");
   expect(
     host.querySelector<HTMLInputElement>('[aria-label="出处简称"]')?.value,
   ).toBe("NIPS 2017");
@@ -1129,7 +1129,7 @@ it("shows optional metadata columns and sorts publication dates without inventin
     "10.1000/example",
   );
   expect(full.querySelector('[data-column="arxiv"]')?.textContent).toBe(
-    "2402.12345",
+    "2024-02",
   );
   expect(
     full.querySelector(".paper-table-tags")?.getAttribute("title"),

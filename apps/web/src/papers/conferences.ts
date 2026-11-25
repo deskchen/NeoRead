@@ -9,6 +9,8 @@ const normalize = (value: string) => {
   let name = value
     .toLowerCase()
     .trim()
+    .replace(/,\s*vol(?:ume)?\.?\s+\d+\s*$/, "")
+    .replace(/\s*['’]\d{2}\b/g, " ")
     .replace(/&/g, " and ")
     .replace(/\b(19|20)[0-9]{2}\b/g, " ")
     .replace(/\b[0-9]+(st|nd|rd|th)\b/g, " ")
@@ -56,21 +58,45 @@ for (const conference of conferences) {
 }
 
 /** Display only: never replace the stored venue or use this for search/sort. */
-export function conferenceVenue({
-  venue = "",
-  venueShort,
-  sources,
-}: Pick<PaperMetadata, "venue" | "venueShort" | "sources">) {
+export function conferenceVenue(
+  {
+    venue = "",
+    venueShort,
+    sources,
+    date,
+    itemType,
+  }: Pick<
+    PaperMetadata,
+    "venue" | "venueShort" | "sources" | "date" | "itemType"
+  >,
+  includeYear = false,
+) {
   const normalized = normalize(venue);
   const conference = directory.get(normalized);
+  const year =
+    /\b(?:19|20)\d{2}\b/.exec(venue)?.[0] ??
+    /['’](\d{2})\b/.exec(venue)?.[1] ??
+    /^(?:19|20)\d{2}/.exec(date ?? "")?.[0];
+  const withYear = (label: string) => {
+    if (!includeYear || (!conference && itemType !== "conference"))
+      return label;
+    const suffix = /\s*(?:['’](\d{2})|\s((?:19|20)\d{2}))$/.exec(label);
+    const displayYear = suffix?.[1] ?? suffix?.[2] ?? year;
+    return displayYear
+      ? `${suffix ? label.slice(0, suffix.index) : label}'${displayYear.slice(-2)}`
+      : label;
+  };
   // An explicit display edit (including clearing) is not a lookup lock.
   if (!conference || sources?.venueShort === "manual") {
     return venue && venueShort?.trim()
-      ? { label: venueShort.trim(), fullName: conference?.fullName ?? venue }
+      ? {
+          label: withYear(venueShort.trim()),
+          fullName: conference?.fullName ?? venue,
+        }
       : { label: venue };
   }
   return {
-    label: conference.abbreviation,
+    label: withYear(conference.abbreviation),
     fullName: conference.fullName,
     original:
       normalized !== normalize(conference.fullName) &&

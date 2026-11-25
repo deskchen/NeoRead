@@ -22,7 +22,9 @@ type conferenceEntry struct {
 // bibliographic wrappers, never arbitrary words such as Workshop or Findings.
 var (
 	conferenceYear           = regexp.MustCompile(`\b(19|20)[0-9]{2}\b`)
+	conferenceShortYear      = regexp.MustCompile(`\s*['’][0-9]{2}\b`)
 	conferenceOrdinal        = regexp.MustCompile(`\b[0-9]+(st|nd|rd|th)\b`)
+	conferenceVolume         = regexp.MustCompile(`,\s*vol(?:ume)?\.?\s+[0-9]+\s*$`)
 	conferenceWrapper        = regexp.MustCompile(`^(proceedings of( the)?|proceedings|the|ieee cvf|ieee rsj|ieee acm|acm ieee|ieee|acm|ifip|usenix association) `)
 	conferencePunctuation    = regexp.MustCompile(`[[:space:][:punct:]]+`)
 	conferenceAdvancesVolume = regexp.MustCompile(`^(advances in neural information processing systems) [0-9]+\b`)
@@ -31,7 +33,9 @@ var (
 func normalizeConferenceName(value string) string {
 	value = strings.ReplaceAll(value, "&", " and ")
 	value = strings.ToLower(strings.TrimSpace(value))
+	value = conferenceVolume.ReplaceAllString(value, "")
 	value = conferenceYear.ReplaceAllString(value, " ")
+	value = conferenceShortYear.ReplaceAllString(value, " ")
 	value = conferenceOrdinal.ReplaceAllString(value, " ")
 	value = strings.Join(strings.Fields(conferencePunctuation.ReplaceAllString(value, " ")), " ")
 	for {
