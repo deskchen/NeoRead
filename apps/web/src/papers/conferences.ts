@@ -74,11 +74,7 @@ export function conferenceVenue(
     venueShort,
     sources,
     date,
-    itemType,
-  }: Pick<
-    PaperMetadata,
-    "venue" | "venueShort" | "sources" | "date" | "itemType"
-  >,
+  }: Pick<PaperMetadata, "venue" | "venueShort" | "sources" | "date">,
   includeYear = false,
 ) {
   const normalized = normalize(venue);
@@ -89,8 +85,7 @@ export function conferenceVenue(
     /['’](\d{2})\b/.exec(venue)?.[1] ??
     /^(?:19|20)\d{2}/.exec(date ?? "")?.[0];
   const withYear = (label: string) => {
-    if (!includeYear || (!conference && itemType !== "conference"))
-      return label;
+    if (!includeYear) return label;
     const suffix = /\s*(?:['’](\d{2})|\s((?:19|20)\d{2}))$/.exec(label);
     const displayYear = suffix?.[1] ?? suffix?.[2] ?? year;
     return displayYear
@@ -104,7 +99,7 @@ export function conferenceVenue(
       (sources?.venueShort === "manual" ? undefined : journal);
     return venue && short
       ? {
-          label: journal ? short : withYear(short),
+          label: withYear(short),
           fullName: conference?.fullName ?? venue,
         }
       : { label: venue };

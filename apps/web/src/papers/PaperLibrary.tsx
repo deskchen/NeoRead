@@ -1877,7 +1877,7 @@ function PaperRow({
               {title}
               {translationLine}
             </div>
-            {authorLine}
+            <PaperByline doc={doc} showAuthors={showAuthors} />
             <div
               className="book-progress"
               role="progressbar"

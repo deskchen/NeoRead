@@ -255,7 +255,7 @@ it.each([
   async (venue, short) => {
     await act(async () =>
       useReaderStore.setState({
-        documents: [{ ...docs[0], metadata: { venue } }],
+        documents: [{ ...docs[0], metadata: { venue, date: "2025" } }],
         libraryPreferences: {
           mode: "papers",
           papers: { layout: "table", columns: ["venue"] },
@@ -264,12 +264,12 @@ it.each([
     );
     expect(
       row(docs[0].title).querySelector('[data-column="venue"]')?.textContent,
-    ).toBe(short);
+    ).toBe(`${short}'25`);
     await act(async () => row(docs[0].title).click());
     const input = host.querySelector<HTMLInputElement>(
       '[aria-label="出处简称"]',
     )!;
-    expect(input.value).toBe(short);
+    expect(input.value).toBe(`${short}'25`);
     await act(async () => {
       input.focus();
       input.blur();
@@ -320,7 +320,7 @@ it("shares manual edits, clearing and new-venue inference between table and deta
   expect(cell().textContent).toBe("NIPS'17");
   expect(
     host.querySelector<HTMLInputElement>('[aria-label="出处简称"]')?.value,
-  ).toBe("NIPS 2017");
+  ).toBe("NIPS'17");
   await edit("出处简称", "", {
     ...edited,
     metadata: { ...edited.metadata, venueShort: "" },
@@ -373,7 +373,7 @@ it("shows, edits and clears an unknown venue abbreviation without changing the v
   expect(api.update).toHaveBeenLastCalledWith("a", {
     metadata: { venueShort: "ICUR 2026" },
   });
-  expect(abbreviation()?.value).toBe("ICUR 2026");
+  expect(abbreviation()?.value).toBe("ICUR'26");
   expect(useReaderStore.getState().documents[0].metadata.venue).toBe(venue);
   expect(
     detail.querySelector<HTMLInputElement>('[aria-label="出处"]')?.value,
@@ -2587,7 +2587,7 @@ it("defaults to the table and honors saved card and author preferences", async (
   const card = host.querySelector<HTMLElement>('[data-paper-id="a"]')!;
   expect(card.querySelector(".paper-card-cover img")).not.toBeNull();
   expect(card.querySelector(".paper-row-byline")?.textContent).toBe(
-    "Ashish Vaswani",
+    "Ashish Vaswani · NeurIPS'17",
   );
   await act(async () =>
     useReaderStore.setState({

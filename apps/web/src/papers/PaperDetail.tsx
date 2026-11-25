@@ -135,7 +135,7 @@ export function Field({
   placeholder?: string;
 }) {
   const storedValue = String(doc.metadata[name] ?? "");
-  const venue = name === "venueShort" ? conferenceVenue(doc.metadata) : null;
+  const venue = name === "venueShort" ? conferenceVenue(doc.metadata, true) : null;
   const value = venue
     ? venue.fullName
       ? venue.label

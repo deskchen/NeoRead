@@ -6,16 +6,10 @@ import { paper } from "./fixtures";
 
 it("includes the proceedings year in a conference label when requested", () => {
   expect(
-    conferenceVenue(
-      { venue: "ASPLOS", date: "2025-03", itemType: "conference" },
-      true,
-    ).label,
+    conferenceVenue({ venue: "ASPLOS", date: "2025-03" }, true).label,
   ).toBe("ASPLOS'25");
   expect(
-    conferenceVenue(
-      { venue: "ASPLOS 2025", date: "2026", itemType: "conference" },
-      true,
-    ).label,
+    conferenceVenue({ venue: "ASPLOS 2025", date: "2026" }, true).label,
   ).toBe("ASPLOS'25");
   expect(conferenceVenue({ venue: "ASPLOS ’25" }, true).label).toBe(
     "ASPLOS'25",
@@ -80,10 +74,10 @@ it.each([
     "Proceedings of the SC '23 Workshops of the International Conference on High Performance Computing, Networking, Storage, and Analysis",
     "SC-W'23",
   ],
-  ["Proceedings of the ACM on Programming Languages", "PACMPL"],
+  ["Proceedings of the ACM on Programming Languages", "PACMPL'25"],
   [
     "Proceedings of the ACM on Measurement and Analysis of Computing Systems",
-    "POMACS",
+    "POMACS'25",
   ],
 ])("shows the established venue abbreviation for %s", (venue, label) => {
   expect(conferenceVenue({ venue, date: "2025" }, true)).toMatchObject({
@@ -239,6 +233,17 @@ it("uses an unknown venue's supplied short name only for display", () => {
     label: venue,
   });
   expect(conferenceVenue({ venue: venue })).toEqual({ label: venue });
+});
+
+it("adds a recorded year to a supplied abbreviation even without a venue type", () => {
+  const venue = "International Conference on A Previously Unknown Discipline";
+  expect(
+    conferenceVenue({ venue, venueShort: "ICAPUD", date: "2024-08" }, true)
+      .label,
+  ).toBe("ICAPUD'24");
+  expect(conferenceVenue({ venue, venueShort: "ICAPUD" }, true).label).toBe(
+    "ICAPUD",
+  );
 });
 
 it("shares explicit abbreviation edits and clearing across displays", () => {
