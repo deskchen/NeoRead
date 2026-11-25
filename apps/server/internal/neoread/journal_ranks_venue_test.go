@@ -14,12 +14,13 @@ func TestJournalRankVenueNamesAreBoundedAndOrdered(t *testing.T) {
 		t.Fatal("ICML missing from local catalog")
 	}
 	for _, tc := range []struct {
-		name            string
-		metadata        PaperMetadata
-		firstMiss, fail bool
-		want            []string
+		name                     string
+		metadata                 PaperMetadata
+		firstMiss, partial, fail bool
+		want                     []string
 	}{
 		{name: "known full name hits", metadata: PaperMetadata{Venue: conference.FullName, VenueShort: "wrong"}, want: []string{conference.FullName}},
+		{name: "CCF alias fallback after an unrelated rank", metadata: PaperMetadata{Venue: conference.FullName}, partial: true, want: []string{conference.FullName, conference.Abbreviation}},
 		{name: "known abbreviation fallback", metadata: PaperMetadata{Venue: conference.FullName}, firstMiss: true, want: []string{conference.FullName, conference.Abbreviation}},
 		{name: "Agent full name hits for preprint", metadata: PaperMetadata{ItemType: "preprint", Venue: "Unlisted Conference", VenueShort: "UC"}, want: []string{"Unlisted Conference"}},
 		{name: "Agent abbreviation fallback", metadata: PaperMetadata{Venue: "Unlisted Conference", VenueShort: "UC"}, firstMiss: true, want: []string{"Unlisted Conference", "UC"}},
@@ -35,6 +36,10 @@ func TestJournalRankVenueNamesAreBoundedAndOrdered(t *testing.T) {
 				queries = append(queries, r.URL.Query().Get("publicationName"))
 				if tc.fail {
 					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+				if tc.partial && len(queries) == 1 {
+					_, _ = w.Write([]byte(`{"code":200,"data":{"officialRank":{"all":{"eii":true}}}}`))
 					return
 				}
 				if tc.firstMiss && len(queries) == 1 {
@@ -77,16 +82,23 @@ func TestJournalRankVenueNamesAreBoundedAndOrdered(t *testing.T) {
 				if json.Unmarshal(w.Body.Bytes(), &result) != nil {
 					t.Fatal(w.Body.String())
 				}
-				wantStatus := "found"
-				if tc.firstMiss && len(tc.want) == 1 {
-					wantStatus = "notFound"
+				var ccf journalRankBadge
+				for _, badge := range result.Badges {
+					if badge.Key == "ccf" {
+						ccf = badge
+					}
 				}
-				if result.Status != wantStatus {
-					t.Fatalf("status=%s want=%s", result.Status, wantStatus)
-				}
-				if result.Status == "found" && (len(result.Badges) != 1 || result.Badges[0].Key != "ccf") {
+				if result.Status != "found" || ccf.Key == "" {
 					t.Fatal(result)
 				}
+				if tc.firstMiss && len(tc.want) == 1 {
+					if ccf.Name != "Non CCF" {
+						t.Fatal(result)
+					}
+				} else if ccf.Name != "CCF" || ccf.Value != "A" {
+					t.Fatal(result)
+				}
+
 				w = request(t, s, "GET", "/api/documents/"+d.ID+"/journal-rank", nil)
 				if w.Code != 200 || len(queries) != len(tc.want) {
 					t.Fatal("bounded result was not cached", queries)

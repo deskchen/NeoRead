@@ -280,3 +280,30 @@ it("reloads cached ratings when only the venue abbreviation changes and ignores 
   expect(host.textContent).not.toContain("CCF C");
   await act(async () => root.unmount());
 });
+
+it("shows the Non CCF label for an arXiv preprint without an API key", async () => {
+  vi.mocked(api.documentJournalRank).mockResolvedValue({
+    status: "found",
+    badges: [{ key: "ccf", name: "Non CCF", value: "" }],
+  });
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  await act(async () =>
+    root.render(
+      <JournalRankBadges
+        id="paper"
+        venue="arXiv"
+        config={{
+          enabled: true,
+          hasKey: false,
+          filterMode: "include",
+          selected: ["ccf"],
+          available: [],
+        }}
+        refreshRevision={0}
+      />,
+    ),
+  );
+  expect(host.querySelector(".journal-rank-badge")?.textContent).toBe("Non CCF");
+  await act(async () => root.unmount());
+});

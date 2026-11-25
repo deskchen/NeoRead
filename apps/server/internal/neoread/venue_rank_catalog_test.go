@@ -31,3 +31,30 @@ func TestLocalVenueRankIndicatorsWithoutKey(t *testing.T) {
 		t.Fatalf("The main conference rank was applied to a workshop: %+v", badges)
 	}
 }
+
+func TestCCFStatusForArxivAndUnknownVenue(t *testing.T) {
+	s := testServer(t)
+	for _, tc := range []struct {
+		name       string
+		meta       PaperMetadata
+		wantNonCCF bool
+	}{
+		{"arXiv identifier only", PaperMetadata{ArXiv: "2502.01234", ItemType: "preprint"}, true},
+		{"arXiv venue", PaperMetadata{Venue: "arXiv preprint arXiv:2502.01234"}, true},
+		{"unverified venue without API key", PaperMetadata{Venue: "Example Journal"}, false},
+		{"formal venue with preprint identifier", PaperMetadata{Venue: "ASPLOS", ArXiv: "2502.01234"}, false},
+		{"missing metadata", PaperMetadata{}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			doc := venueTestDocument(t, s, tc.meta)
+			w := request(t, s, "GET", "/api/documents/"+doc.ID+"/journal-rank", nil)
+			var result journalRankResult
+			if w.Code != http.StatusOK || json.Unmarshal(w.Body.Bytes(), &result) != nil {
+				t.Fatal(w.Code, w.Body.String())
+			}
+			if got := strings.Contains(w.Body.String(), "Non CCF"); got != tc.wantNonCCF {
+				t.Fatalf("unexpected CCF status: %+v", result)
+			}
+		})
+	}
+}

@@ -1553,6 +1553,7 @@ function PaperRow({
       <ChevronRight className={expanded ? "rotate-90" : undefined} />
     </Button>
   );
+  const rankVenue = doc.metadata.venue || (doc.metadata.arxiv ? "arXiv" : "");
   const authors = showAuthors ? authorsShort(doc) : "";
   const authorLine = authors && (
     <p className="paper-row-byline" title={authors}>
@@ -1816,7 +1817,7 @@ function PaperRow({
                     {authorLine}
                     <JournalRankBadges
                       id={doc.id}
-                      venue={doc.metadata.venue || ""}
+                      venue={rankVenue}
                       venueShort={doc.metadata.venueShort}
                       config={journalRankConfig}
                       refreshRevision={journalRankRefresh}
@@ -1903,7 +1904,7 @@ function PaperRow({
               <PaperByline doc={doc} showAuthors={showAuthors} />
               <JournalRankBadges
                 id={doc.id}
-                venue={doc.metadata.venue || ""}
+                venue={rankVenue}
                 venueShort={doc.metadata.venueShort}
                 config={journalRankConfig}
                 refreshRevision={journalRankRefresh}

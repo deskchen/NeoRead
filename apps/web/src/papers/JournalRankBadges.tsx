@@ -40,9 +40,16 @@ export function JournalRankBadges({
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
   const [visibleCount, setVisibleCount] = useState(Infinity);
-  const enabled = !!config?.enabled && (config.hasKey || ["core", "thcpl"].some(
-    (key) => config.selected.includes(key) !== (config.filterMode === "exclude"),
-  ));
+  const localFields = /^arxiv(?:[.:\s]|$)/i.test(venue.trim())
+    ? ["ccf"]
+    : ["core", "thcpl"];
+  const enabled =
+    !!config?.enabled &&
+    (config.hasKey ||
+      localFields.some(
+        (key) =>
+          config.selected.includes(key) !== (config.filterMode === "exclude"),
+      ));
   const lastRefresh = useRef({ refreshRevision, retry });
   useEffect(() => {
     const force =
@@ -135,7 +142,8 @@ export function JournalRankBadges({
             .join(" · ")}
         >
           {badge.name}
-          {badge.subject ? ` ${badge.subject}` : ""} {badge.value}
+          {badge.subject ? ` ${badge.subject}` : ""}
+          {badge.value ? ` ${badge.value}` : ""}
           {badge.year ? ` · ${badge.year}` : ""}
         </span>
       ))}
