@@ -119,6 +119,8 @@ Original files are stored on the filesystem. Document metadata, progress, annota
 
 Legacy Reader libraries usually live at `~/Library/Application Support/Reader/library/` on macOS. On its first launch, the installed NeoRead app copies and verifies the legacy library and related settings once, then offers an option to clean up the migrated legacy business data. Development runs do not read legacy Reader data. See the [migration guide](docs/neoread-migration.md) (Chinese) for scope, recovery, and cleanup rules.
 
+An empty folder selected under **Settings → Paper Library → Library Location** becomes the library directory. In a nonempty folder, NeoRead creates a `NeoRead Library` subfolder. NeoRead validates the copy before restarting and retains the original library.
+
 ```text
 library/
 ├── neoread.sqlite       # Metadata, reading records, conversations, settings, and full-text index

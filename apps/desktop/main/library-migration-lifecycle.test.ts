@@ -48,6 +48,7 @@ let recoveryStart: ReturnType<typeof vi.fn>;
 let loadURL = vi.fn<(url: string) => void>();
 let showMessageBox: ReturnType<typeof vi.fn>;
 let showOpenDialog: ReturnType<typeof vi.fn>;
+let readdir: ReturnType<typeof vi.fn>;
 const event = () => ({
   sender: window.webContents,
   senderFrame: window.webContents.mainFrame,
@@ -220,8 +221,10 @@ beforeEach(async ({ task }) => {
     uninstallCitePlugin: vi.fn(),
   }));
   vi.doMock("node:child_process", () => ({ spawn: serverSpawn }));
+  readdir = vi.fn(async () => ["existing-file"]);
   vi.doMock("node:fs/promises", () => ({
     readFile: vi.fn(),
+    readdir,
     realpath: vi.fn(async (path: string) => path),
     lstat: async () => {
       throw Object.assign(new Error("absent"), { code: "ENOENT" });
@@ -432,8 +435,33 @@ it("waits for flushed reading data, then copies once despite repeated quit event
     join("/destination", "NeoRead Library"),
     expect.any(String),
     expect.any(Function),
+    false,
   );
   expect(app.relaunch).toHaveBeenCalledOnce();
+});
+
+it("copies directly into the selected empty folder", async () => {
+  readdir.mockResolvedValueOnce([]);
+  const result = move();
+  await vi.waitFor(() =>
+    expect(window.webContents.send).toHaveBeenCalledWith("neoread:flush"),
+  );
+  expect(showMessageBox).toHaveBeenCalledWith(
+    window,
+    expect.objectContaining({
+      detail: expect.stringContaining("/destination\n"),
+    }),
+  );
+  ipc.emit("neoread:flushed", event(), null);
+  expect(await result).toBe(true);
+  expect(migrate).toHaveBeenCalledWith(
+    "/userdata",
+    "/old/library",
+    "/destination",
+    expect.any(String),
+    expect.any(Function),
+    true,
+  );
 });
 
 it("cancels migration after a save failure and allows returning to reading", async () => {

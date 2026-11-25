@@ -38,6 +38,7 @@ func main() {
 	logs := flag.String("logs", "", "diagnostic log directory")
 	session := flag.String("session", "", "diagnostic session ID")
 	migrateLibrary := flag.String("migrate-library", "", "copy a stopped library to a new directory and exit")
+	useEmptyLibraryDirectory := flag.Bool("use-empty-library-directory", false, "allow migration into an existing empty directory")
 	installLibrary := flag.String("install-library-to", "", "copy and activate a stopped library before a Windows installer upgrade")
 	installUserData := flag.String("install-user-data", "", "desktop profile in which to save the installer library location")
 	legacySource := flag.String("migrate-reader-data", "", "migrate Reader application data once and exit")
@@ -93,7 +94,11 @@ func main() {
 		return
 	}
 	if *migrateLibrary != "" {
-		if err := neoread.CopyLibrary(*data, *migrateLibrary); err != nil {
+		copyLibrary := neoread.CopyLibrary
+		if *useEmptyLibraryDirectory {
+			copyLibrary = neoread.CopyLibraryIntoEmptyDirectory
+		}
+		if err := copyLibrary(*data, *migrateLibrary); err != nil {
 			log.Fatal(err)
 		}
 		return

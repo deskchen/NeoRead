@@ -100,6 +100,55 @@ func TestCopyLibraryRefusesExistingAndNestedTargets(t *testing.T) {
 	}
 }
 
+func TestCopyLibraryIntoExistingEmptyDirectory(t *testing.T) {
+	source := migrationSource(t)
+	target := t.TempDir()
+	before, err := os.Stat(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := CopyLibraryIntoEmptyDirectory(source, target); err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.Stat(target)
+	if err != nil || !os.SameFile(before, after) {
+		t.Fatalf("The user-owned directory was replaced: %v", err)
+	}
+	if err := ValidateLibrary(target); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(source, "neoread.sqlite")); err != nil {
+		t.Fatal(err)
+	}
+	if err := CopyLibraryIntoEmptyDirectory(source, target); err == nil {
+		t.Fatal("Accepted a directory that is no longer empty")
+	}
+}
+
+func TestCopyLibraryIntoEmptyDirectoryRollsBackOwnedEntries(t *testing.T) {
+	source := migrationSource(t)
+	target := t.TempDir()
+	if err := os.WriteFile(filepath.Join(source, "neoread.sqlite"), []byte("invalid database"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := CopyLibraryIntoEmptyDirectory(source, target); err == nil {
+		t.Fatal("Accepted an invalid source database")
+	}
+	entries, err := os.ReadDir(target)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("Expected the original empty directory: %v (%v)", entries, err)
+	}
+	if err := os.WriteFile(filepath.Join(target, "unrelated"), []byte("keep"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := CopyLibraryIntoEmptyDirectory(source, target); err == nil {
+		t.Fatal("Accepted a nonempty user-owned directory")
+	}
+	if content, err := os.ReadFile(filepath.Join(target, "unrelated")); err != nil || string(content) != "keep" {
+		t.Fatalf("Unrelated data changed: %q (%v)", content, err)
+	}
+}
+
 func TestCopyLibraryRejectsQuestionMarkPathsBeforeCopying(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Windows does not allow question marks in directory names")

@@ -132,7 +132,7 @@ Pi worker 在私有临时目录运行，通过 NeoRead 提供的工具按权限�
 | 未打包桌面版（`pnpm desktop`） | macOS 为 `~/Library/Application Support/NeoRead Dev/library/`                               |
 | 浏览器开发模式（`pnpm dev`）   | 项目根目录的 `.neoread/`                                                                    |
 
-桌面版可在 **设置 → 论文库 → 书库位置** 中选择新的保存文件夹。NeoRead 会在其中新建 `NeoRead Library`，保存当前阅读状态后，复制 PDF、EPUB、笔记、批注、阅读记录及其他书库数据，校验成功后重启。已有的 `NeoRead Library` 不会被覆盖，原书库保留为迁移时的备份，之后的修改只写入新位置。笔记仍保存在书库数据库中，不单独导出文件；这不是 Zotero 持续同步。
+In the desktop app, open **Settings → Paper Library → Library Location** to move the library. NeoRead uses an empty selected folder directly and creates a `NeoRead Library` subfolder inside a nonempty selection. It saves reading progress, copies the library, and restarts after validation. The original library remains available as a backup, and subsequent changes are saved to the new location.
 
 书库保存路径（包括上级目录）不能包含 `?`。自定义位置记录在 `userData/library-location.json`，命令行也会跟随该位置。若外接存储设备未连接或保存位置已被移走，桌面版会停止启动并提示错误，不会自动创建空书库。上表是未自定义时的默认目录。
 

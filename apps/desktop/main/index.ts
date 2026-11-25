@@ -16,7 +16,7 @@ import {
 import { spawn, type ChildProcess } from "node:child_process";
 import { join, resolve } from "node:path";
 import { createInterface } from "node:readline";
-import { readFile, realpath, lstat } from "node:fs/promises";
+import { readFile, readdir, realpath, lstat } from "node:fs/promises";
 import {
   hasLibraryDatabase,
   libraryDirectory,
@@ -157,6 +157,7 @@ let pendingLibraryMove:
   | {
       destination: string;
       existing?: boolean;
+      reuseEmptyDirectory?: boolean;
       resolve: (moved: boolean) => void;
     }
   | undefined;
@@ -820,6 +821,16 @@ app
             quitting = true; // This server exit is intentional.
             updateService?.stop();
             proxySettings?.stop();
+            const started = performance.now();
+            const mode = move.existing
+              ? "existing_library"
+              : move.reuseEmptyDirectory
+                ? "empty_directory"
+                : "new_child";
+            diagnostics?.logs.record("desktop", {
+              event: "library.move_started",
+              detail: mode,
+            });
             try {
               if (move.existing) {
                 if (child) await stopLibraryServer(child);
@@ -840,9 +851,21 @@ app
                   async () => {
                     if (child) await stopLibraryServer(child);
                   },
+                  move.reuseEmptyDirectory ?? false,
                 );
+              diagnostics?.logs.record("desktop", {
+                event: "library.move_finished",
+                detail: mode,
+                durationMs: Math.round(performance.now() - started),
+              });
               move.resolve(true);
             } catch (error) {
+              diagnostics?.logs.record("desktop", {
+                level: "error",
+                event: "library.move_failed",
+                detail: mode,
+                durationMs: Math.round(performance.now() - started),
+              });
               await dialog.showMessageBox(window!, {
                 type: "error",
                 message: move.existing ? "打开书库失败" : "书库迁移失败",
@@ -1107,25 +1130,28 @@ app
       choosingLibrary = true;
       try {
         const selected = await dialog.showOpenDialog(window!, {
-          title: "选择书库保存位置（将在其中新建 NeoRead Library）",
+          title: "Choose a library location",
           properties: ["openDirectory", "createDirectory"],
         });
         if (selected.canceled || !selected.filePaths[0]) return false;
-        const destination = join(
-          await realpath(selected.filePaths[0]),
-          "NeoRead Library",
-        );
+        const directory = await realpath(selected.filePaths[0]);
+        const reuseEmptyDirectory = (await readdir(directory)).length === 0;
+        const destination = reuseEmptyDirectory
+          ? directory
+          : join(directory, "NeoRead Library");
         await assertSafeLibraryPath(destination, installationDirectory());
         // The server's SQLite DSN treats ? as the start of query parameters.
         if (destination.includes("?"))
           throw new Error("书库路径不能包含 ?，请选择其他位置。");
-        try {
-          await lstat(destination);
-          throw new Error(
-            "所选位置已有 NeoRead Library 文件夹，请选择其他位置。",
-          );
-        } catch (error) {
-          if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+        if (!reuseEmptyDirectory) {
+          try {
+            await lstat(destination);
+            throw new Error(
+              "This folder already contains NeoRead Library. Choose another location.",
+            );
+          } catch (error) {
+            if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+          }
         }
         const confirmed = await dialog.showMessageBox(window!, {
           type: "question",
@@ -1137,7 +1163,7 @@ app
         });
         if (confirmed.response !== 0 || closing || quitting) return false;
         return await new Promise<boolean>((resolve) => {
-          pendingLibraryMove = { destination, resolve };
+          pendingLibraryMove = { destination, reuseEmptyDirectory, resolve };
           restartRequested = true;
           app.quit();
         });

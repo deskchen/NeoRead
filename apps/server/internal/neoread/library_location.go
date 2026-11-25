@@ -19,8 +19,17 @@ func CopyLibrary(source, destination string) error {
 	return copyLibrary(source, destination, nil)
 }
 
+// CopyLibraryIntoEmptyDirectory reuses a user-selected, existing empty directory.
+func CopyLibraryIntoEmptyDirectory(source, destination string) error {
+	return copyLibraryTo(source, destination, nil, true)
+}
+
 // activate is installer-only. Keep both libraries locked until it commits.
-func copyLibrary(source, destination string, activate func(string) error) (err error) {
+func copyLibrary(source, destination string, activate func(string) error) error {
+	return copyLibraryTo(source, destination, activate, false)
+}
+
+func copyLibraryTo(source, destination string, activate func(string) error, reuseEmpty bool) (err error) {
 	// Fingerprints use the paths passed to the running Store. Keep their spelling
 	// even when symlinks are resolved below for overlap checks and safe copying.
 	sourceRoot, err := filepath.Abs(source)
@@ -83,41 +92,70 @@ func copyLibrary(source, destination string, activate func(string) error) (err e
 		return installerFailureAt(installSourceLock, installCopyFailed, err)
 	}
 	defer unlock()
-	// Never merge with or overwrite a directory the user already owns.
-	if err = os.Mkdir(destination, 0700); err != nil {
-		reason := installCopyFailed
-		if errors.Is(err, os.ErrExist) {
-			reason = installDestinationExists
+	if !reuseEmpty {
+		if err = os.Mkdir(destination, 0700); err != nil {
+			reason := installCopyFailed
+			if errors.Is(err, os.ErrExist) {
+				reason = installDestinationExists
+			}
+			return installerFailureAt(installDestinationCreate, reason, fmt.Errorf("无法创建新书库，请选择不含 NeoRead Library 的文件夹：%w", err))
 		}
-		return installerFailureAt(installDestinationCreate, reason, fmt.Errorf("无法创建新书库，请选择不含 NeoRead Library 的文件夹：%w", err))
 	}
-	createdDir, err := os.Open(destination)
+	root, err := os.OpenRoot(destination)
 	if err != nil {
 		return installerFailureAt(installDestinationCreate, installCopyFailed, err)
 	}
-	created, err := createdDir.Stat()
+	defer root.Close()
+	created, err := root.Stat(".")
 	if err != nil {
-		createdDir.Close()
 		return installerFailureAt(installDestinationCreate, installCopyFailed, err)
 	}
-	unlockTarget, err := LockLibrary(destination)
-	if err != nil {
-		createdDir.Close()
-		// Without the lock, do not remove contents another instance may own.
-		if current, statErr := os.Lstat(destination); statErr == nil && os.SameFile(created, current) {
-			_ = os.Remove(destination)
-		}
-		return installerFailureAt(installDestinationLock, installCopyFailed, err)
-	}
+	target := libraryCopyTarget{root: root, trackEntries: reuseEmpty}
+	var unlockTarget func()
 	defer func() {
-		unlockTarget()
-		createdDir.Close()
+		if unlockTarget != nil {
+			unlockTarget()
+		}
 		if err != nil {
-			if cleanupErr := removeCreatedLibrary(destination, created); cleanupErr != nil {
-				err = errors.Join(err, fmt.Errorf("无法清理未启用的新书库：%w", cleanupErr))
+			var cleanupErr error
+			if reuseEmpty {
+				if unlockTarget != nil {
+					cleanupErr = target.rollback()
+				}
+			} else {
+				_ = root.Close()
+				if unlockTarget != nil {
+					cleanupErr = removeCreatedLibrary(destination, created)
+				} else if current, statErr := os.Lstat(destination); statErr == nil && os.SameFile(created, current) {
+					// A lock failure may leave another process holding the target.
+					_ = os.Remove(destination)
+				}
+			}
+			if cleanupErr != nil {
+				err = errors.Join(err, fmt.Errorf("Could not clean up the incomplete library: %w", cleanupErr))
 			}
 		}
 	}()
+	if err = verifyLibraryTarget(destination, created); err != nil {
+		return installerFailureAt(installDestinationCreate, installUnsafeLocation, err)
+	}
+	if reuseEmpty {
+		err = target.checkEmpty()
+		if err != nil {
+			return installerFailureAt(installDestinationCreate, installDestinationExists, err)
+		}
+		lockFile, err := target.createFile("neoread.lock")
+		if err != nil {
+			return installerFailureAt(installDestinationLock, installCopyFailed, err)
+		}
+		if err := lockFile.Close(); err != nil {
+			return installerFailureAt(installDestinationLock, installCopyFailed, err)
+		}
+	}
+	unlockTarget, err = LockLibrary(destination)
+	if err != nil {
+		return installerFailureAt(installDestinationLock, installCopyFailed, err)
+	}
 	err = filepath.WalkDir(source, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -145,9 +183,8 @@ func copyLibrary(source, destination string, activate func(string) error) (err e
 				return nil
 			}
 		}
-		target := filepath.Join(destination, relative)
 		if entry.IsDir() {
-			return os.Mkdir(target, 0700)
+			return target.createDirectory(relative)
 		}
 		info, err := entry.Info()
 		if err != nil {
@@ -156,10 +193,15 @@ func copyLibrary(source, destination string, activate func(string) error) (err e
 		if !info.Mode().IsRegular() {
 			return installerFailureAt(installCopy, installUnsafeLocation, fmt.Errorf("书库包含链接或特殊文件，无法安全迁移：%s", relative))
 		}
-		return copyLibraryFile(path, target)
+		return copyLibraryContents(path, func() (*os.File, error) {
+			return target.createFile(relative)
+		})
 	})
 	if err != nil {
 		return installerFailureAt(installCopy, installCopyFailed, err)
+	}
+	if err = verifyLibraryTarget(destination, created); err != nil {
+		return installerFailureAt(installVerify, installUnsafeLocation, err)
 	}
 	// Validate the copy and rebind its corpus paths without opening the source
 	// database. Only the installer also converts the legacy database filename.
@@ -170,19 +212,10 @@ func copyLibrary(source, destination string, activate func(string) error) (err e
 	} else if err = checkLibraryDatabase(sourceRoot, destinationRoot); err != nil {
 		return installerFailureAt(installVerify, installCopyFailed, err)
 	}
+	if err = verifyLibraryTarget(destination, created); err != nil {
+		return installerFailureAt(installActivate, installUnsafeLocation, err)
+	}
 	if activate != nil {
-		currentDir, err := os.Open(destination)
-		if err != nil {
-			return installerFailureAt(installActivate, installUnsafeLocation, err)
-		}
-		current, statErr := currentDir.Stat()
-		currentDir.Close()
-		if statErr != nil {
-			return installerFailureAt(installActivate, installUnsafeLocation, statErr)
-		}
-		if !current.IsDir() || !os.SameFile(created, current) {
-			return installerFailureAt(installActivate, installUnsafeLocation, fmt.Errorf("新书库目录已更换，未启用：%s", destination))
-		}
 		return installerFailureAt(installActivate, installSettingsWrite, activate(destinationRoot))
 	}
 	return nil
@@ -203,12 +236,18 @@ func removeCreatedLibrary(path string, created os.FileInfo) error {
 }
 
 func copyLibraryFile(source, destination string) error {
+	return copyLibraryContents(source, func() (*os.File, error) {
+		return os.OpenFile(destination, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	})
+}
+
+func copyLibraryContents(source string, create func() (*os.File, error)) error {
 	in, err := os.Open(source)
 	if err != nil {
 		return err
 	}
 	defer in.Close()
-	out, err := os.OpenFile(destination, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	out, err := create()
 	if err != nil {
 		return err
 	}

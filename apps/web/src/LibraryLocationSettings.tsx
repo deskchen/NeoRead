@@ -79,9 +79,9 @@ export function LibraryLocationSettings({
         {recovery ? "书库尚未连接" : directory || "正在读取位置"}
       </p>
       <p className="mb-4 text-xs leading-5 text-muted-foreground">
-        PDF、图书、笔记、批注和阅读记录一起保存。选择新位置后，将在该目录下新建
-        NeoRead Library
-        文件夹，复制整个书库并重启。原目录保留，已有文件不会被覆盖。
+        NeoRead copies the library into the selected folder if it is empty.
+        Otherwise, it creates a NeoRead Library subfolder. The original library
+        is kept, and existing files are never overwritten.
       </p>
       <p className="mt-3 text-xs leading-5 text-muted-foreground">
         导入书库：选择包含 neoread.sqlite 或 reader.sqlite 的 library

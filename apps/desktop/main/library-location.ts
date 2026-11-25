@@ -76,12 +76,19 @@ export async function migrateLibrary(
   destination: string,
   binary: string,
   stop: () => Promise<void>,
+  reuseEmptyDirectory = false,
 ): Promise<void> {
   await stop();
   try {
     await execute(
       binary,
-      ["--data", source, "--migrate-library", destination],
+      [
+        "--data",
+        source,
+        "--migrate-library",
+        destination,
+        ...(reuseEmptyDirectory ? ["--use-empty-library-directory"] : []),
+      ],
       {
         windowsHide: true,
         maxBuffer: 64 * 1024,
