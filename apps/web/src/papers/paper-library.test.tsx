@@ -1128,7 +1128,7 @@ it("shows optional metadata columns and sorts publication dates without inventin
     "10.1000/example",
   );
   expect(full.querySelector('[data-column="arxiv"]')?.textContent).toBe(
-    "arXiv-24-02",
+    "arXiv'24",
   );
   expect(
     full.querySelector(".paper-table-tags")?.getAttribute("title"),

@@ -82,7 +82,7 @@ export const columnLabels: Record<PaperColumn, string> = {
   venue: "出处",
   progress: "阅读进度",
   doi: "DOI",
-  arxiv: "arXiv month",
+  arxiv: "arXiv year",
   size: "文件大小",
   added: "添加时间",
   opened: "上次打开",

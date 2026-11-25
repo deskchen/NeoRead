@@ -87,19 +87,20 @@ it.each([
 });
 
 it("retains arXiv fallback when no venue exists", () => {
-  expect(venueLabel({ arxiv: "1706.03762" })).toBe("arXiv-17-06");
-  expect(venueLabel({ venue: "arXiv:2503.01234" })).toBe("arXiv-25-03");
-  expect(venueLabel({ arxiv: "hep-th/9901001v2" })).toBe("arXiv-99-01");
+  expect(venueLabel({ arxiv: "1706.03762" })).toBe("arXiv'17");
+  expect(venueLabel({ venue: "arXiv:2503.01234" })).toBe("arXiv'25");
+  expect(venueLabel({ arxiv: "hep-th/9901001v2" })).toBe("arXiv'99");
   expect(
     venueLabel({
       venue: "arXiv preprint arXiv:2503.01234",
       arxiv: "2503.01234",
     }),
-  ).toBe("arXiv-25-03");
+  ).toBe("arXiv'25");
   expect(venueLabel({ venue: "arXiv.org", date: "2025-02-17" })).toBe(
-    "arXiv-25-02",
+    "arXiv'25",
   );
-  expect(venueLabel({ venue: "arXiv.org", date: "2025" })).toBe("arXiv");
+  expect(venueLabel({ venue: "arXiv.org", date: "2026" })).toBe("arXiv'26");
+  expect(venueLabel({ venue: "arXiv.org" })).toBe("arXiv");
   expect(venueLabel({})).toBe("");
 });
 

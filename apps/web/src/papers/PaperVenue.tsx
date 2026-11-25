@@ -13,7 +13,7 @@ export function PaperVenue({ metadata }: { metadata: PaperMetadata }) {
   const [open, setOpen] = useState(false);
   const label = venueLabel(metadata);
   const venue = conferenceVenue(metadata, true);
-  if (!venue.fullName || /^arXiv(?:-|$)/.test(label)) return <>{label}</>;
+  if (!venue.fullName || /^arXiv(?:'|$)/.test(label)) return <>{label}</>;
   return (
     <Tooltip onOpenChange={setOpen}>
       <TooltipTrigger
@@ -49,7 +49,7 @@ export function PaperByline({
   const details = [
     showAuthors ? authorsShort(doc) : "",
     (displayVenue.fullName && /'\d{2}$/.test(displayVenue.label)) ||
-    venue.startsWith("arXiv-")
+    venue.startsWith("arXiv'")
       ? ""
       : paperYear(doc.metadata),
   ]

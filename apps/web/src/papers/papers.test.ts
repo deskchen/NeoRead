@@ -63,7 +63,7 @@ it("formats author lists by script and falls back to the display author", () => 
         metadata: { date: "2017-06-12", arxiv: "1706.03762" },
       }),
     ),
-  ).toBe("Ada · arXiv-17-06");
+  ).toBe("Ada · arXiv'17");
 });
 
 it("parses one author per line and formats them back", () => {
