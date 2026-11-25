@@ -889,9 +889,11 @@ export function Settings({
             <section>
               <PaperRefreshSettings open={open} />
             </section>
-            <section>
-              <PaperTitleTranslationSettings />
-            </section>
+            {theme.translationEnabled !== false && (
+              <section>
+                <PaperTitleTranslationSettings />
+              </section>
+            )}
             <section>
               <LegacyAnnotationMigration />
             </section>
@@ -949,30 +951,32 @@ export function Settings({
               <BrandColorSetting theme={theme} setTheme={setTheme} />
             </section>
             <section className="space-y-3">
-              <div className="flex items-center justify-between gap-3 text-sm">
-                <div>
-                  <label id="bilingual-titles-label" htmlFor="bilingual-titles">
-                    双语标题
-                  </label>
-                  <p
-                    id="bilingual-titles-description"
-                    className="text-xs text-muted-foreground"
-                  >
-                    在原标题下显示已有译名，不会自动翻译。
-                  </p>
+              {theme.translationEnabled !== false && (
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <div>
+                    <label id="bilingual-titles-label" htmlFor="bilingual-titles">
+                      双语标题
+                    </label>
+                    <p
+                      id="bilingual-titles-description"
+                      className="text-xs text-muted-foreground"
+                    >
+                      在原标题下显示已有译名，不会自动翻译。
+                    </p>
+                  </div>
+                  <Switch
+                    id="bilingual-titles"
+                    aria-labelledby="bilingual-titles-label"
+                    aria-describedby="bilingual-titles-description"
+                    checked={libraryPreferences.showBilingualTitles === true}
+                    onCheckedChange={(checked) =>
+                      void updateLibraryPreferences({
+                        showBilingualTitles: checked,
+                      }).catch((error) => toast.error((error as Error).message))
+                    }
+                  />
                 </div>
-                <Switch
-                  id="bilingual-titles"
-                  aria-labelledby="bilingual-titles-label"
-                  aria-describedby="bilingual-titles-description"
-                  checked={libraryPreferences.showBilingualTitles === true}
-                  onCheckedChange={(checked) =>
-                    void updateLibraryPreferences({
-                      showBilingualTitles: checked,
-                    }).catch((error) => toast.error((error as Error).message))
-                  }
-                />
-              </div>
+              )}
               <div className="flex items-center justify-between gap-3 text-sm">
                 <span id="authors-label">显示作者名称</span>
                 <Switch
@@ -1085,31 +1089,35 @@ export function Settings({
                   }
                 />
               </div>
-              <div className="flex items-center justify-between gap-4 text-sm">
-                <span>
-                  原文译文悬停关联
-                  <span className="block text-xs text-muted-foreground">
-                    悬停时提示另一侧对应的完整句子
-                  </span>
-                </span>
-                <Switch
-                  aria-label="原文译文悬停关联"
-                  checked={theme.linkTranslationAnnotations !== false}
-                  onCheckedChange={(checked) =>
-                    setTheme({ linkTranslationAnnotations: !!checked })
-                  }
-                />
-              </div>
-              <div className="flex items-center justify-between gap-4 text-sm">
-                <span>原文重排显示</span>
-                <Switch
-                  aria-label="原文重排显示"
-                  checked={theme.sourceReflow === true}
-                  onCheckedChange={(checked) =>
-                    setTheme({ sourceReflow: !!checked })
-                  }
-                />
-              </div>
+              {theme.translationEnabled !== false && (
+                <>
+                  <div className="flex items-center justify-between gap-4 text-sm">
+                    <span>
+                      原文译文悬停关联
+                      <span className="block text-xs text-muted-foreground">
+                        悬停时提示另一侧对应的完整句子
+                      </span>
+                    </span>
+                    <Switch
+                      aria-label="原文译文悬停关联"
+                      checked={theme.linkTranslationAnnotations !== false}
+                      onCheckedChange={(checked) =>
+                        setTheme({ linkTranslationAnnotations: !!checked })
+                      }
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-4 text-sm">
+                    <span>原文重排显示</span>
+                    <Switch
+                      aria-label="原文重排显示"
+                      checked={theme.sourceReflow === true}
+                      onCheckedChange={(checked) =>
+                        setTheme({ sourceReflow: !!checked })
+                      }
+                    />
+                  </div>
+                </>
+              )}
               <div className="flex items-center justify-between gap-4 text-sm">
                 <span>点击段落聚焦</span>
                 <Switch
@@ -1131,6 +1139,11 @@ export function Settings({
             {window.neoreadDesktop?.libraryLocation && (
               <LibraryLocationSettings open={open} />
             )}
+            <AutoTranslationSettings
+              theme={theme}
+              setTheme={setTheme}
+              showAutomatic={currentLibrary === "papers"}
+            />
             {currentLibrary === "papers" && (
               <>
                 <CitePluginSettings open={open} />
@@ -1172,7 +1185,6 @@ export function Settings({
                       }
                     />
                   </label>
-                  <AutoTranslationSettings theme={theme} setTheme={setTheme} />
                 </section>
                 <section>
                   <h3 className="mb-3 text-sm font-medium">期刊指标</h3>
@@ -1598,7 +1610,7 @@ export function Settings({
               />
             )}
             <CommandLineSettings open={open} />
-            {config && (
+            {config && theme.translationEnabled !== false && (
               <TranslationPromptSettings
                 value={config.translationPrompt ?? ""}
                 disabled={saving || aiModelSaving || testing.size > 0}

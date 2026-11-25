@@ -149,45 +149,49 @@ export function ReadingTextControls({
           <Separator />
         </>
       )}
-      <Section title="译文">
-        <FontRow
-          label="译文"
-          family={
-            theme.translationFontFamily ??
-            defaultTheme.translationFontFamily ??
-            "serif"
-          }
-          preview={translationFont}
-          onFamily={(translationFontFamily) =>
-            setTheme({ translationFontFamily })
-          }
-          bold={
-            (theme.translationFontWeight ??
-              defaultTheme.translationFontWeight) === "bold"
-          }
-          onBold={(bold) =>
-            setTheme({ translationFontWeight: bold ? "bold" : "normal" })
-          }
-          fonts={fonts}
-        />
-        <SizeRow
-          label="译文字号"
-          min={80}
-          max={160}
-          value={Math.round(translationSize * 100)}
-          onValue={(value) => setTheme({ translationFontSize: value / 100 })}
-          action={
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setTheme({ translationFontSize: 1 })}
-            >
-              恢复
-            </Button>
-          }
-        />
-      </Section>
-      <Separator />
+      {theme.translationEnabled !== false && (
+        <>
+          <Section title="译文">
+            <FontRow
+              label="译文"
+              family={
+                theme.translationFontFamily ??
+                defaultTheme.translationFontFamily ??
+                "serif"
+              }
+              preview={translationFont}
+              onFamily={(translationFontFamily) =>
+                setTheme({ translationFontFamily })
+              }
+              bold={
+                (theme.translationFontWeight ??
+                  defaultTheme.translationFontWeight) === "bold"
+              }
+              onBold={(bold) =>
+                setTheme({ translationFontWeight: bold ? "bold" : "normal" })
+              }
+              fonts={fonts}
+            />
+            <SizeRow
+              label="译文字号"
+              min={80}
+              max={160}
+              value={Math.round(translationSize * 100)}
+              onValue={(value) => setTheme({ translationFontSize: value / 100 })}
+              action={
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setTheme({ translationFontSize: 1 })}
+                >
+                  恢复
+                </Button>
+              }
+            />
+          </Section>
+          <Separator />
+        </>
+      )}
       <Section title="Agent">
         <FontRow
           label="Agent "

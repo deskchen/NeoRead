@@ -237,6 +237,21 @@ async function renderView(
     await act(async () => fixture.setReadingMode!(requestedMode));
 }
 
+it("hides translation controls and preserves the PDF when translation is disabled", async () => {
+  await renderView(
+    { ...defaultTheme, translationEnabled: false },
+    [],
+    [],
+    undefined,
+    undefined,
+    "reflow",
+  );
+  expect(host.querySelector(".translation-toolbar [role='tablist']")).toBeNull();
+  expect(host.querySelector("[data-reflow-block]")).toBeNull();
+  expect(host.textContent).not.toContain("第一句。");
+  expect(fixture.ready).toBeDefined();
+});
+
 it("uses repaired text for search and focuses the matching block", async () => {
   const results = await fixture.ready!.search("第二句");
   expect(results).toHaveLength(1);

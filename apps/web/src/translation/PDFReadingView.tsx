@@ -93,7 +93,7 @@ export function PDFReadingView({
   document: doc,
   active = true,
   theme,
-  readingMode,
+  readingMode: requestedMode,
   onReadingModeChange,
   annotations,
   blocks,
@@ -127,7 +127,8 @@ export function PDFReadingView({
   const { swapped, sourceWidth } = readerLayout(theme.readerLayout);
   // The PDF engine stays mounted, hidden, for outline, search and navigation.
   const translationEnabled = theme.translationEnabled !== false;
-  const reflow = theme.textReflow === true;
+  const readingMode = translationEnabled ? requestedMode : "source";
+  const reflow = translationEnabled && theme.textReflow === true;
   const sourceOnly = reflow && readingMode === "source";
   const blockSelector = reflow
     ? "[data-reflow-block]"

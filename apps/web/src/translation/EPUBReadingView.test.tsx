@@ -205,6 +205,15 @@ async function click(label: string) {
   await act(async () => button.click());
 }
 
+it("hides translation controls and restores the source after leaving reflow", async () => {
+  await click("重排");
+  await renderView({ ...defaultTheme, translationEnabled: false });
+  expect(host.querySelector(".translation-toolbar")).toBeNull();
+  expect(host.querySelector(".epub-reflow")).toBeNull();
+  expect(host.textContent).not.toContain("第一句。");
+  expect(fixture.ready).toBeDefined();
+});
+
 it("keeps full mixed selection text for chat and independent annotation parts", async () => {
   await click("重排");
   const source = host.querySelector('[data-epub-run="p1-b1"]')!;

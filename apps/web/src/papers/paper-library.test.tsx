@@ -49,7 +49,6 @@ vi.mock("@neoread/api", () => ({
     relateDocuments: vi.fn(async () => ({})),
     unrelateDocuments: vi.fn(async () => ({})),
     process: vi.fn(async () => ({})),
-    setAssistance: vi.fn(async () => ({})),
   },
   coverURL: (id: string) => `/covers/${id}`,
   publicationURL: (id: string, path: string) => `/publications/${id}/${path}`,
@@ -1167,7 +1166,7 @@ it("shows optional metadata columns and sorts publication dates without inventin
 });
 
 it.each(["card", "table"] as const)(
-  "shows manual translation after parsing in %s view",
+  "hides the manual translation action after parsing in %s view",
   async (layout) => {
     const job: Processing = {
       documentId: "a",
@@ -1183,6 +1182,7 @@ it.each(["card", "table"] as const)(
     };
     jobs = new Map([["a", job]]);
     await act(async () => {
+      useReaderStore.getState().setTheme({ translationEnabled: true });
       useReaderStore.setState({
         libraryPreferences: { mode: "papers", papers: { layout } },
       });
@@ -1198,14 +1198,17 @@ it.each(["card", "table"] as const)(
       manualTranslation: true,
     });
     await act(async () => root.render(<Harness />));
-    const button = Array.from(
-      row("Attention Is All You Need").querySelectorAll("button"),
-    ).find((button) => button.textContent === "翻译")!;
-    expect(button).toBeDefined();
-    await act(async () => button.click());
-    expect(api.setAssistance).toHaveBeenCalledWith("a", "start");
-    expect(open).not.toHaveBeenCalled();
-    expect(button.disabled).toBe(true);
+    expect(row("Attention Is All You Need").textContent).not.toContain("翻译");
+    jobs.set("a", { ...job, phase: "translating", status: "queued" });
+    await act(async () => root.render(<Harness key="queued" />));
+    expect(row("Attention Is All You Need").textContent).toContain("等待翻译");
+    await act(async () =>
+      useReaderStore.getState().setTheme({ translationEnabled: false }),
+    );
+    expect(row("Attention Is All You Need").textContent).not.toContain("翻译");
+    await act(async () =>
+      useReaderStore.getState().setTheme({ translationEnabled: true }),
+    );
   },
 );
 

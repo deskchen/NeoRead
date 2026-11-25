@@ -81,7 +81,7 @@ export function EPUBReadingView({
   onReady,
   toolbarHost,
   processing,
-  readingMode,
+  readingMode: requestedMode,
   onReadingModeChange,
 }: ComponentProps<typeof ReaderView> & {
   readingMode: ReadingMode;
@@ -92,8 +92,9 @@ export function EPUBReadingView({
   pageNavigation?: ReactNode;
 }) {
   const translationEnabled = theme.translationEnabled !== false;
+  const readingMode = translationEnabled ? requestedMode : "source";
   const mode = readingMode === "reflow" ? "parallel" : readingMode;
-  const reflow = theme.textReflow === true;
+  const reflow = translationEnabled && theme.textReflow === true;
   const [companions, setCompanions] = useState<Map<string, HTMLElement>>(
     () => new Map(),
   );

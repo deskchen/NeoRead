@@ -5,24 +5,28 @@ import { Switch } from "@neoread/ui/components/switch";
 export function AutoTranslationSettings({
   theme,
   setTheme,
+  showAutomatic = true,
 }: {
   theme: ReaderTheme;
+  showAutomatic?: boolean;
   setTheme: (patch: Partial<ReaderTheme>) => void;
 }) {
   const limit = theme.autoTranslateMaxPages ?? 0;
   const enabled = theme.translationEnabled !== false;
+  const showLimit = enabled && showAutomatic;
   return (
     <div className="mt-5 space-y-3 text-sm">
       <label className="flex items-center justify-between gap-3">
         <span className="font-medium">Translation features</span>
         <Switch
+          aria-label="Translation features"
           checked={enabled}
           onCheckedChange={(checked) =>
             setTheme({ translationEnabled: checked })
           }
         />
       </label>
-      {enabled && (
+      {showLimit && (
         <label className="flex items-center justify-between gap-3">
           <span className="font-medium">Automatically translate papers</span>
           <Switch
@@ -33,7 +37,7 @@ export function AutoTranslationSettings({
           />
         </label>
       )}
-      {enabled && (
+      {showLimit && (
         <>
           <p>
             {limit === 0 ? (
