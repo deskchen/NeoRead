@@ -26,20 +26,21 @@ type Creator struct {
 
 // Metadata uses the same field meanings as the reader's paper metadata.
 type Metadata struct {
-	Title     string
-	ItemType  string
-	Creators  []Creator
-	Date      string
-	Venue     string
-	Volume    string
-	Issue     string
-	Pages     string
-	Publisher string
-	DOI       string
-	ArXiv     string
-	ISBN      string
-	URL       string
-	Abstract  string
+	Title      string
+	ItemType   string
+	Creators   []Creator
+	Date       string
+	Venue      string
+	VenueShort string
+	Volume     string
+	Issue      string
+	Pages      string
+	Publisher  string
+	DOI        string
+	ArXiv      string
+	ISBN       string
+	URL        string
+	Abstract   string
 }
 
 type Identifiers struct {
@@ -239,7 +240,7 @@ func words(text string) map[string]bool {
 
 // TitleSimilarity is the Jaccard overlap of the two titles' words.
 func TitleSimilarity(a, b string) float64 {
-	x, y := words(a), words(b)
+	x, y := words(CleanTitle(a)), words(CleanTitle(b))
 	if len(x) == 0 || len(y) == 0 {
 		return 0
 	}
@@ -293,7 +294,13 @@ func overlay(a, b Metadata) Metadata {
 		a.Creators = b.Creators
 	}
 	a.Date = pick(a.Date, b.Date)
-	a.Venue = pick(a.Venue, b.Venue)
+	if b.Venue != "" {
+		if !strings.EqualFold(a.Venue, b.Venue) {
+			a.VenueShort = ""
+		}
+		a.Venue = b.Venue
+		a.VenueShort = pick(a.VenueShort, b.VenueShort)
+	}
 	a.Volume = pick(a.Volume, b.Volume)
 	a.Issue = pick(a.Issue, b.Issue)
 	a.Pages = pick(a.Pages, b.Pages)

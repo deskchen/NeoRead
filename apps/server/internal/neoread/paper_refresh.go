@@ -2,10 +2,13 @@ package neoread
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"sync"
 	"time"
+
+	"neoread.local/server/internal/scholar"
 )
 
 type paperRefreshProgress struct {
@@ -103,7 +106,11 @@ func (s *Server) runPaperRefresh(ctx context.Context) {
 			skipped = e != nil || !paperRefreshEligible(d)
 			if !skipped {
 				lookupCtx, cancel := context.WithTimeout(work, time.Minute)
-				_, err = s.lookupDocument(lookupCtx, docID, false)
+				hasTitle := d.Metadata.Sources["title"] != "" || usablePaperTitle(d.Title) != ""
+				_, err = s.lookupDocument(lookupCtx, docID, hasTitle)
+				if hasTitle && (errors.Is(err, errNoIdentifier) || errors.Is(err, scholar.ErrNotFound)) {
+					_, err = s.lookupDocument(lookupCtx, docID, false)
+				}
 				cancel()
 			}
 			finish()

@@ -102,7 +102,7 @@ func (s *Server) lookupScholarCandidates(ctx context.Context, id string, candida
 }
 
 func fromScholar(m scholar.Metadata) PaperMetadata {
-	out := PaperMetadata{ItemType: m.ItemType, Date: m.Date, Venue: m.Venue, Volume: m.Volume, Issue: m.Issue, Pages: m.Pages, Publisher: m.Publisher, DOI: m.DOI, ArXiv: m.ArXiv, ISBN: m.ISBN, URL: m.URL, Abstract: m.Abstract}
+	out := PaperMetadata{ItemType: m.ItemType, Date: m.Date, Venue: m.Venue, VenueShort: m.VenueShort, Volume: m.Volume, Issue: m.Issue, Pages: m.Pages, Publisher: m.Publisher, DOI: m.DOI, ArXiv: m.ArXiv, ISBN: m.ISBN, URL: m.URL, Abstract: m.Abstract}
 	for _, c := range m.Creators {
 		out.Creators = append(out.Creators, Creator{Given: c.Given, Family: c.Family, Name: c.Name})
 	}
@@ -131,7 +131,12 @@ func (s *Server) applyFound(id string, found PaperMetadata, title, source, looku
 		}
 		changed := m.Merge(found, source)
 		nextTitle := d.Title
-		if title = strings.TrimSpace(title); source == "ai" {
+		if m.Sources["title"] == "lookup" {
+			if current := scholar.CleanTitle(d.Title); current != "" {
+				nextTitle = current
+			}
+		}
+		if title = scholar.CleanTitle(title); source == "ai" {
 			if t, e := cleanText(title, 300, false); e == nil {
 				if t == d.Title {
 					m.SuggestedTitle = ""
@@ -157,7 +162,7 @@ func (s *Server) applyFound(id string, found PaperMetadata, title, source, looku
 			m.Lookup, m.LookedUpAt = lookup, now()
 		}
 		after, _ := json.Marshal(m)
-		result, err := s.Store.DB.ExecContext(ctx, "UPDATE documents SET title=?,author=?,metadata=? WHERE id=? AND metadata=?", nextTitle, author, string(after), id, string(before))
+		result, err := s.Store.DB.ExecContext(ctx, "UPDATE documents SET title=?,author=?,metadata=? WHERE id=? AND title=? AND metadata=?", nextTitle, author, string(after), id, d.Title, string(before))
 		if err != nil {
 			return d, err
 		}
@@ -251,6 +256,7 @@ func (s *Server) lookupDocument(ctx context.Context, id string, useCurrentTitle 
 		return d, ctx.Err()
 	}
 	var quick quickPaperMetadata
+	currentTitle := scholar.CleanTitle(d.Title)
 	pdfTitle := ""
 	ids := scholar.Identifiers{DOI: d.Metadata.DOI, ArXiv: d.Metadata.ArXiv}
 	if !useCurrentTitle {
@@ -274,7 +280,7 @@ func (s *Server) lookupDocument(ctx context.Context, id string, useCurrentTitle 
 	}
 	titleHint := ""
 	if useCurrentTitle || d.Metadata.Sources["title"] != "" {
-		titleHint = strings.TrimSpace(d.Title)
+		titleHint = currentTitle
 	}
 	var candidates []scholar.Identifiers
 	seen := map[scholar.Identifiers]bool{}
@@ -285,7 +291,7 @@ func (s *Server) lookupDocument(ctx context.Context, id string, useCurrentTitle 
 		}
 	}
 	if useCurrentTitle {
-		add(scholar.Identifiers{Title: d.Title})
+		add(scholar.Identifiers{Title: currentTitle})
 	} else {
 		if ids.ArXiv != "" {
 			add(scholar.Identifiers{ArXiv: ids.ArXiv})

@@ -53,7 +53,7 @@ func (c *Client) arxivMetadata(ctx context.Context, id string) (Metadata, error)
 		return Metadata{}, ErrNotFound
 	}
 	e := feed.Entries[0]
-	m := Metadata{Venue: clean(e.JournalRef), Title: clean(e.Title), ItemType: "preprint", Abstract: clean(e.Summary), ArXiv: id, DOI: clean(e.DOI), URL: "https://arxiv.org/abs/" + bareArXiv(id)}
+	m := Metadata{Venue: clean(e.JournalRef), Title: CleanTitle(e.Title), ItemType: "preprint", Abstract: clean(e.Summary), ArXiv: id, DOI: clean(e.DOI), URL: "https://arxiv.org/abs/" + bareArXiv(id)}
 	if len(e.Published) >= 10 {
 		m.Date = e.Published[:10]
 	}
@@ -116,6 +116,12 @@ var crossrefTypes = map[string]string{
 	"dissertation": "thesis", "report": "report",
 }
 var jatsTag = regexp.MustCompile(`<[^>]+>`)
+var titleMarkup = regexp.MustCompile(`(?i)</?(?:jats:[a-z][\w-]*|scp|small-caps|italic|bold|sub|sup|i|b|em|strong|span)(?:\s+[^<>]*)?\s*/?>`)
+
+// CleanTitle converts publisher inline markup to plain text without losing its contents.
+func CleanTitle(title string) string {
+	return clean(titleMarkup.ReplaceAllString(html.UnescapeString(title), ""))
+}
 
 func datePart(parts [][]int) string {
 	if len(parts) == 0 || len(parts[0]) == 0 || parts[0][0] < 1000 {
@@ -153,16 +159,17 @@ func (c *Client) crossref(ctx context.Context, doi string) (Metadata, error) {
 	}
 	var body struct {
 		Message struct {
-			Type           string   `json:"type"`
-			Title          []string `json:"title"`
-			ContainerTitle []string `json:"container-title"`
-			Publisher      string   `json:"publisher"`
-			Volume         string   `json:"volume"`
-			Issue          string   `json:"issue"`
-			Page           string   `json:"page"`
-			ISBN           []string `json:"ISBN"`
-			Abstract       string   `json:"abstract"`
-			Author         []struct {
+			Type                string   `json:"type"`
+			Title               []string `json:"title"`
+			ContainerTitle      []string `json:"container-title"`
+			ShortContainerTitle []string `json:"short-container-title"`
+			Publisher           string   `json:"publisher"`
+			Volume              string   `json:"volume"`
+			Issue               string   `json:"issue"`
+			Page                string   `json:"page"`
+			ISBN                []string `json:"ISBN"`
+			Abstract            string   `json:"abstract"`
+			Author              []struct {
 				Given  string `json:"given"`
 				Family string `json:"family"`
 				Name   string `json:"name"`
@@ -179,12 +186,15 @@ func (c *Client) crossref(ctx context.Context, doi string) (Metadata, error) {
 	if len(r.Title) == 0 {
 		return Metadata{}, ErrNotFound
 	}
-	m := Metadata{Title: clean(r.Title[0]), DOI: doi, ItemType: crossrefTypes[r.Type], Publisher: clean(r.Publisher), Volume: clean(r.Volume), Issue: clean(r.Issue), Pages: strings.ReplaceAll(clean(r.Page), "--", "-")}
+	m := Metadata{Title: CleanTitle(r.Title[0]), DOI: doi, ItemType: crossrefTypes[r.Type], Publisher: clean(r.Publisher), Volume: clean(r.Volume), Issue: clean(r.Issue), Pages: strings.ReplaceAll(clean(r.Page), "--", "-")}
 	if m.ItemType == "" {
 		m.ItemType = "other"
 	}
 	if len(r.ContainerTitle) > 0 {
 		m.Venue = clean(r.ContainerTitle[0])
+		if len(r.ShortContainerTitle) > 0 {
+			m.VenueShort = clean(r.ShortContainerTitle[0])
+		}
 	}
 	if len(r.ISBN) > 0 {
 		m.ISBN = r.ISBN[0]
@@ -266,7 +276,7 @@ func (c *Client) s2Search(ctx context.Context, title string) (s2Paper, error) {
 }
 
 func (p s2Paper) metadata() Metadata {
-	m := Metadata{Title: clean(p.Title), Abstract: clean(p.Abstract), Venue: clean(p.Venue), DOI: p.ExternalIDs.DOI, ArXiv: p.ExternalIDs.ArXiv, Date: p.PublicationDate}
+	m := Metadata{Title: CleanTitle(p.Title), Abstract: clean(p.Abstract), Venue: clean(p.Venue), DOI: p.ExternalIDs.DOI, ArXiv: p.ExternalIDs.ArXiv, Date: p.PublicationDate}
 	if m.Date == "" && p.Year > 0 {
 		m.Date = fmt.Sprint(p.Year)
 	}
@@ -381,7 +391,7 @@ func pageMetadata(tags map[string][]string, page string) Metadata {
 		return ""
 	}
 	m := Metadata{
-		Title:     first("citation_title", "dc.title", "og:title"),
+		Title:     CleanTitle(first("citation_title", "dc.title", "og:title")),
 		Date:      first("citation_publication_date", "citation_date", "citation_online_date", "dc.date"),
 		Venue:     first("citation_journal_title", "citation_conference_title", "citation_inbook_title"),
 		Volume:    first("citation_volume"),

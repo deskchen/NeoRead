@@ -297,8 +297,11 @@ func (m *PaperMetadata) Merge(found PaperMetadata, source string) []string {
 			}
 			value = v
 		}
-		if key == "venue" && (!strings.EqualFold(value.(string), m.Venue) || found.VenueShort != "") {
-			m.set("venueShort", found.VenueShort, source)
+		if key == "venue" {
+			short, _ := cleanText(found.VenueShort, 500, false)
+			if !strings.EqualFold(value.(string), m.Venue) || short != "" {
+				m.set("venueShort", short, source)
+			}
 		}
 		m.set(key, value, source)
 		changed = append(changed, key)

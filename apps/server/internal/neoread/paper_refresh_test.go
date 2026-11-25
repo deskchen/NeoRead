@@ -141,3 +141,34 @@ func TestPaperRefreshUsesTitleSuggestion(t *testing.T) {
 		t.Fatalf("document %+v err %v calls %d", got, err, len(calls()))
 	}
 }
+
+func TestPaperRefreshUsesAndCleansStoredPublisherTitle(t *testing.T) {
+	s := testServer(t)
+	const title = "Medusa: Accelerating Serverless LLM Inference with Materialization"
+	const marked = "<scp>Medusa:</scp> Accelerating Serverless LLM Inference with Materialization"
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("query") != title {
+			t.Errorf("Unexpected title query: %q", r.URL.Query().Get("query"))
+		}
+		_, _ = w.Write([]byte(`{"data":[{"title":` + jsonText(marked) + `,"venue":"ASPLOS"}]}`))
+	}))
+	defer upstream.Close()
+	client := scholar.New(maxImportBytes)
+	client.AllowPrivateHosts = true
+	client.SemanticScholar = upstream.URL + "/"
+	s.scholar = client
+	w := uploadTo(t, s, "papers", "random.pdf", testPDF(1))
+	var doc Document
+	if err := json.Unmarshal(w.Body.Bytes(), &doc); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Store.DB.Exec("UPDATE documents SET title=? WHERE id=?", marked, doc.ID); err != nil {
+		t.Fatal(err)
+	}
+	request(t, s, "POST", "/api/diagnostics/paper-refresh", nil)
+	s.runPaperRefresh(t.Context())
+	saved, err := s.Store.Document(doc.ID)
+	if err != nil || saved.Title != title || saved.Metadata.Venue != "ASPLOS" || saved.Metadata.Lookup != "done" {
+		t.Fatalf("Unexpected metadata: %+v (%v)", saved, err)
+	}
+}

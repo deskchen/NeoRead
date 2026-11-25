@@ -8,7 +8,7 @@ export function PaperRefreshSettings({ open }: { open: boolean }) {
   const [progress, setProgress] = useState<PaperRefreshProgress | null>(null);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState("");
-  const running = useRef(false);
+  const synced = useRef(0);
   const revision = useRef(0);
   const startPending = useRef(false);
   useEffect(() => {
@@ -22,9 +22,12 @@ export function PaperRefreshSettings({ open }: { open: boolean }) {
       try {
         const next = await api.paperRefreshStatus();
         if (!active || current !== revision.current) return;
-        if (running.current && next.status !== "running")
-          void refreshLibrary().catch(() => {});
-        running.current = next.status === "running";
+        if (next.processed < synced.current) synced.current = 0;
+        if (next.processed > synced.current) {
+          await refreshLibrary();
+          if (!active || current !== revision.current) return;
+          synced.current = next.processed;
+        }
         setProgress(next);
         setError("");
       } catch {
@@ -52,7 +55,7 @@ export function PaperRefreshSettings({ open }: { open: boolean }) {
     try {
       const next = await api.startPaperRefresh();
       if (current !== revision.current) return;
-      running.current = next.status === "running";
+      synced.current = 0;
       setProgress(next);
     } catch {
       if (current === revision.current) setError("无法启动任务，请稍后重试。");
