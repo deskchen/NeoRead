@@ -178,14 +178,15 @@ export function PaperDetail({
 }) {
   const all = useReaderStore((s) => s.documents);
   const prefs = useReaderStore((s) => s.libraryPreferences.papers) || {};
-  const showBilingualTitles = useReaderStore(
-    (s) =>
-      s.theme.translationEnabled !== false &&
-      s.libraryPreferences.showBilingualTitles === true,
+  const translationEnabled = useReaderStore(
+    (s) => s.theme.translationEnabled !== false,
   );
-  const translated = showBilingualTitles
-    ? displayTitleTranslation(doc)
-    : undefined;
+  const showBilingualTitles =
+    useReaderStore((s) => s.libraryPreferences.showBilingualTitles) === true;
+  const translated =
+    translationEnabled && showBilingualTitles
+      ? displayTitleTranslation(doc)
+      : undefined;
   const papers = all.filter((d) => d.library === "papers");
   const categories = paperCategories(prefs, papers);
   const [abstractOpen, setAbstractOpen] = useState(false);
@@ -392,7 +393,7 @@ export function PaperDetail({
           </Button>
         </div>
         <dl className="paper-fields">
-          <FieldRow doc={doc} name="translatedTitle" />
+          {translationEnabled && <FieldRow doc={doc} name="translatedTitle" />}
           <dt>类型</dt>
           <dd>
             <Select

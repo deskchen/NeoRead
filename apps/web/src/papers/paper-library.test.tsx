@@ -1829,9 +1829,19 @@ it("shows the paper translation in the title column and on cards, not in other c
   await act(async () =>
     savePaperPreferences((prefs) => ({ ...prefs, layout: "card" })),
   );
-  const card = host.querySelector('article[data-paper-id="a"]');
+  const card = host.querySelector<HTMLElement>('article[data-paper-id="a"]');
   expect(card?.textContent).toContain(translatedTitle);
   expect(card?.querySelector(".cover-title")?.textContent).toBe(docs[0].title);
+  await act(async () => card!.click());
+  expect(host.querySelector('[aria-label="译名"]')).not.toBeNull();
+  await act(async () =>
+    useReaderStore.getState().setTheme({ translationEnabled: false }),
+  );
+  expect(host.querySelector('[aria-label="译名"]')).toBeNull();
+  expect(host.textContent).not.toContain(translatedTitle);
+  await act(async () =>
+    useReaderStore.getState().setTheme({ translationEnabled: true }),
+  );
 });
 
 it("stops the final metadata boundary when there is no spare space", async () => {
