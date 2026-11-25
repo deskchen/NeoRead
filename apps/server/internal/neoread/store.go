@@ -153,6 +153,10 @@ func OpenStore(root string) (*Store, error) {
 		db.Close()
 		return nil, err
 	}
+	if err = store.migratePaperTitleMarkup(); err != nil {
+		db.Close()
+		return nil, err
+	}
 	if err = store.migrateEPUBLocations(); err != nil {
 		db.Close()
 		return nil, err

@@ -76,7 +76,7 @@ type Server struct {
 	modelCache             map[string]modelCatalogEntry
 	modelLoads             map[string]*modelCatalogLoad
 	paperRefresh           paperRefreshState
-	paperTitleBackfill      atomic.Bool
+	paperTitleBackfill     atomic.Bool
 	scholarMu              sync.Mutex
 	scholar                *scholar.Client
 	journalRankMu          sync.Mutex
@@ -545,6 +545,9 @@ func (s *Server) importFileToCategory(ctx context.Context, temp, filename, libra
 		d.Category = "book"
 	}
 	if library == "papers" {
+		if cleanTitle := scholar.StripTitleMarkup(d.Title); cleanTitle != "" {
+			d.Title = cleanTitle
+		}
 		// The library choice is the user's classification; no AI guess is needed.
 		d.Category, d.CategorySource, d.ClassificationStatus = "paper", "manual", "done"
 		if folder != "" {

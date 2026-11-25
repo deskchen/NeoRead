@@ -118,9 +118,18 @@ var crossrefTypes = map[string]string{
 var jatsTag = regexp.MustCompile(`<[^>]+>`)
 var titleMarkup = regexp.MustCompile(`(?i)</?(?:jats:[a-z][\w-]*|scp|small-caps|italic|bold|sub|sup|i|b|em|strong|span)(?:\s+[^<>]*)?\s*/?>`)
 
-// CleanTitle converts publisher inline markup to plain text without losing its contents.
+// StripTitleMarkup preserves plain titles and removes known publisher inline tags.
+func StripTitleMarkup(title string) string {
+	decoded := html.UnescapeString(title)
+	if !titleMarkup.MatchString(decoded) {
+		return title
+	}
+	return clean(titleMarkup.ReplaceAllString(decoded, ""))
+}
+
+// CleanTitle converts bibliographic titles to plain text and normalizes whitespace.
 func CleanTitle(title string) string {
-	return clean(titleMarkup.ReplaceAllString(html.UnescapeString(title), ""))
+	return clean(StripTitleMarkup(html.UnescapeString(title)))
 }
 
 func datePart(parts [][]int) string {
